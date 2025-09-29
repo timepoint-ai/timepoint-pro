@@ -1,0 +1,104 @@
+[tool.poetry]
+name = "timepoint-daedalus"
+version = "0.1.0"
+description = "Temporal entity simulation with LLM-driven training and tensor compression"
+authors = ["Sean McDonald <sean@example.com>"]
+readme = "README.md"
+packages = [{include = "*.py"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# Core dependencies
+hydra-core = "^1.3.2"
+omegaconf = "^2.3.0"
+pydantic = "^2.10.0"
+
+# LLM and AI
+instructor = "^1.7.0"
+openai = "^1.57.0"
+langgraph = "^0.2.62"
+
+# Graph and network analysis
+networkx = "^3.4.2"
+
+# Database and ORM
+sqlmodel = "^0.0.22"
+
+# Scientific computing and ML
+numpy = "^2.2.1"
+scipy = "^1.15.0"
+scikit-learn = "^1.6.1"
+
+# Serialization
+msgspec = "^0.19.0"
+
+# Fix for macOS grpcio build issues - explicitly pin newer version with pre-built wheels
+grpcio = "^1.68.1"
+
+[tool.poetry.group.dev.dependencies]
+# Testing
+pytest = "^8.3.4"
+pytest-cov = "^6.0.0"
+pytest-asyncio = "^0.25.2"
+hypothesis = "^6.122.3"
+
+# Code quality
+ruff = "^0.8.5"
+black = "^24.10.0"
+mypy = "^1.14.1"
+
+[tool.poetry.group.eval.dependencies]
+# Evaluation frameworks (optional)
+# Note: deepeval has strict grpcio version requirements that conflict with macOS builds
+# Install manually if needed: pip install deepeval (may require building from source on macOS)
+
+[tool.poetry.scripts]
+timepoint = "cli:main"
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long (handled by black)
+    "B008", # do not perform function calls in argument defaults
+    "C901", # too complex
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["test_framework.py"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "--cov=.",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
