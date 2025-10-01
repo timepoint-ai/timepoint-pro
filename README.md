@@ -200,8 +200,13 @@ mypy .
 - Variable resolution system
 - Natural language queries
 - Knowledge validation and consistency
+- **Token-efficient queries** via compressed tensor decompression (Mechanism 1.1)
+- **Temporal evolution validation** with physics-inspired constraints (Mechanism 1.2)
+- **Parallel entity processing** for concurrent LLM calls (Mechanism 1.3)
+- **Physics-inspired validation** with conservation laws (Mechanism 4)
+- **TTM tensor model** with context/biology/behavior factorization (Mechanism 6)
 
-⏳ **Remaining**: Production optimizations (batch LLM calls, caching, error handling)
+⏳ **Remaining**: Additional production optimizations (batch LLM calls, parallel execution, error handling)
 
 See `CHANGE-ROUND.md` for detailed development progress.
 

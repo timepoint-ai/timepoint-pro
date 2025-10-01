@@ -1,6 +1,7 @@
 # ============================================================================
 # query_interface.py - Natural language query interface with lazy resolution elevation
 # ============================================================================
+import numpy as np
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from pydantic import BaseModel
@@ -9,6 +10,7 @@ from storage import GraphStore
 from llm import LLMClient
 from resolution_engine import ResolutionEngine
 from instructor import OpenAISchema
+from tensors import load_compressed_entity_data
 
 
 class QueryIntent(OpenAISchema):
@@ -214,11 +216,31 @@ Extract:
             if success:
                 print(f"  Elevated {entity.entity_id} resolution to {required_resolution.value}")
 
-        # Record this query for future resolution decisions
+        # Record this query for future resolution decisions and progressive training
         self.resolution_engine.record_query(entity.entity_id)
+        entity.query_count += 1  # Increment query count for progressive training
+        self.store.save_entity(entity)  # Save the updated query count
+
+        # Determine which tensor type to decompress based on query
+        tensor_type = self._get_tensor_type_for_query(query_intent.information_type)
+
+        # Try to load compressed tensor data first (token-efficient)
+        compressed_tensor = load_compressed_entity_data(entity, tensor_type)
+
+        # If no tensor found for specific type, try context tensor as fallback
+        if compressed_tensor is None and tensor_type != "context":
+            compressed_tensor = load_compressed_entity_data(entity, "context")
+
+        knowledge_state = []
+        if compressed_tensor is not None:
+            # Decompress tensor to get knowledge representation
+            knowledge_state = self._tensor_to_knowledge(compressed_tensor, tensor_type, entity)
+            print(f"  📦 Used compressed {tensor_type} tensor for {entity.entity_id}")
+        else:
+            # Fall back to stored knowledge state
+            knowledge_state = entity.entity_metadata.get("knowledge_state", [])
 
         # Get temporally filtered knowledge based on query intent
-        knowledge_state = entity.entity_metadata.get("knowledge_state", [])
         temporally_filtered_knowledge = self._filter_knowledge_by_time(knowledge_state, query_intent, entity.entity_id)
         relevant_knowledge = self._filter_relevant_knowledge(temporally_filtered_knowledge, query_intent)
 
@@ -282,6 +304,158 @@ Extract:
             ResolutionLevel.TRAINED: 4
         }
         return hierarchy.get(level, 0)
+
+    def _get_tensor_type_for_query(self, information_type: str) -> str:
+        """Determine which tensor type to decompress based on query information type"""
+        tensor_mapping = {
+            "knowledge": "context",      # Knowledge/thoughts -> context tensor
+            "actions": "behavior",       # Actions -> behavior tensor
+            "relationships": "context",  # Relationships -> context tensor
+            "dialog": "context",         # Dialog -> context tensor
+            "general": "context"         # General queries -> context tensor
+        }
+        return tensor_mapping.get(information_type, "context")
+
+    def _tensor_to_knowledge(self, tensor: np.ndarray, tensor_type: str, entity: Entity) -> List[str]:
+        """Convert decompressed tensor back to meaningful knowledge representation"""
+        if tensor_type == "context":
+            return self._interpret_context_tensor(tensor, entity)
+        elif tensor_type == "biology":
+            return self._interpret_biology_tensor(tensor, entity)
+        elif tensor_type == "behavior":
+            return self._interpret_behavior_tensor(tensor, entity)
+        else:
+            return [f"Unknown tensor type {tensor_type}: {tensor[:3]}..."]
+
+    def _interpret_context_tensor(self, tensor: np.ndarray, entity: Entity) -> List[str]:
+        """Interpret context tensor as knowledge/information state"""
+        knowledge_items = []
+
+        # Context tensor interpretation based on dimensionality and values
+        # This is a simplified mapping - in practice, this would use learned semantic mappings
+
+        if len(tensor) >= 10:
+            # Assume first dimensions represent different knowledge categories
+            categories = [
+                "historical_events", "personal_relationships", "professional_experience",
+                "cultural_knowledge", "political_views", "religious_beliefs",
+                "scientific_understanding", "artistic_interests", "social_connections",
+                "personal_memories"
+            ]
+
+            for i, (category, value) in enumerate(zip(categories, tensor[:10])):
+                if abs(value) > 0.3:  # Significant knowledge in this area
+                    intensity = "deep" if value > 0.7 else "moderate" if value > 0.5 else "basic"
+                    knowledge_items.append(f"Has {intensity} knowledge of {category.replace('_', ' ')}")
+
+        # Look for patterns in the tensor that might indicate specific knowledge
+        tensor_mean = np.mean(tensor)
+        tensor_std = np.std(tensor)
+
+        if tensor_std < 0.1:
+            knowledge_items.append("Has consistent, stable knowledge across domains")
+        elif tensor_std > 0.5:
+            knowledge_items.append("Has specialized expertise in specific areas with varying depth")
+
+        # Add entity-specific context if available
+        role = entity.entity_metadata.get("role", "").lower()
+        if "president" in role and len(tensor) > 5:
+            if tensor[0] > 0.5:  # Historical events dimension
+                knowledge_items.append("Well-versed in historical precedents and governmental affairs")
+
+        return knowledge_items[:8]  # Limit to most relevant items
+
+    def _interpret_biology_tensor(self, tensor: np.ndarray, entity: Entity) -> List[str]:
+        """Interpret biology tensor as physical/health state"""
+        biology_facts = []
+
+        if len(tensor) >= 3:
+            # Assume tensor format: [age, health_status, energy_level, ...]
+            age = entity.entity_metadata.get("age", 50)
+
+            # Age interpretation
+            if age < 25:
+                biology_facts.append("Young adult in prime physical condition")
+            elif age < 45:
+                biology_facts.append("Middle-aged with established health patterns")
+            elif age < 65:
+                biology_facts.append("Experienced adult with some age-related considerations")
+            else:
+                biology_facts.append("Elderly with significant age-related physical constraints")
+
+            # Health status interpretation (simplified)
+            if len(tensor) > 1:
+                health_score = tensor[1]  # Assume second dimension is health
+                if health_score > 0.7:
+                    biology_facts.append("Generally healthy with good physical resilience")
+                elif health_score > 0.4:
+                    biology_facts.append("Moderate health with some physical limitations")
+                else:
+                    biology_facts.append("Poor health requiring significant accommodations")
+
+            # Energy level interpretation
+            if len(tensor) > 2:
+                energy_score = tensor[2]  # Assume third dimension is energy
+                if energy_score > 0.7:
+                    biology_facts.append("High energy levels supporting active lifestyle")
+                elif energy_score > 0.4:
+                    biology_facts.append("Moderate energy with normal daily activities")
+                else:
+                    biology_facts.append("Low energy requiring rest and limited activity")
+
+        # Add role-specific biological constraints
+        role = entity.entity_metadata.get("role", "").lower()
+        if "soldier" in role or "general" in role:
+            biology_facts.append("Military background suggests physical fitness and discipline")
+        elif "politician" in role:
+            biology_facts.append("Public role may involve stress-related health considerations")
+
+        return biology_facts
+
+    def _interpret_behavior_tensor(self, tensor: np.ndarray, entity: Entity) -> List[str]:
+        """Interpret behavior tensor as personality and behavioral patterns"""
+        behavior_traits = []
+
+        if len(tensor) >= 5:
+            # Assume Big Five personality model: [openness, conscientiousness, extraversion, agreeableness, neuroticism]
+
+            trait_names = ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism"]
+            trait_descriptions = {
+                "openness": ["closed-minded and traditional", "somewhat open to new ideas", "highly open and creative"],
+                "conscientiousness": ["disorganized and careless", "moderately organized", "highly disciplined and organized"],
+                "extraversion": ["introverted and reserved", "somewhat social", "highly outgoing and energetic"],
+                "agreeableness": ["competitive and assertive", "moderately cooperative", "highly compassionate and trusting"],
+                "neuroticism": ["emotionally stable", "moderately sensitive", "highly anxious and emotional"]
+            }
+
+            for i, (trait, value) in enumerate(zip(trait_names, tensor[:5])):
+                if value < 0.3:
+                    behavior_traits.append(f"Low {trait}: {trait_descriptions[trait][0]}")
+                elif value < 0.7:
+                    behavior_traits.append(f"Moderate {trait}: {trait_descriptions[trait][1]}")
+                else:
+                    behavior_traits.append(f"High {trait}: {trait_descriptions[trait][2]}")
+
+        # Look for behavioral patterns
+        if len(tensor) > 5:
+            # Additional dimensions might represent decision-making patterns
+            risk_taking = tensor[5] if len(tensor) > 5 else 0.5
+            if risk_taking > 0.7:
+                behavior_traits.append("Risk-tolerant decision maker")
+            elif risk_taking < 0.3:
+                behavior_traits.append("Risk-averse and cautious")
+
+        # Add role-specific behavioral insights
+        role = entity.entity_metadata.get("role", "").lower()
+        if "president" in role or "leader" in role:
+            behavior_traits.append("Leadership role suggests strong decision-making and social skills")
+        elif "general" in role:
+            behavior_traits.append("Military command experience indicates discipline and strategic thinking")
+
+        # Add temporal consistency note
+        behavior_traits.append("Behavioral patterns show temporal inertia (personality stability over time)")
+
+        return behavior_traits[:6]  # Limit to most relevant traits
 
     def _elevate_entity_resolution(self, entity: Entity, target_resolution: ResolutionLevel) -> bool:
         """Elevate entity resolution by calling LLM for additional details"""
