@@ -37,9 +37,6 @@ grpcio = "^1.68.1"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
-pytest = "^8.3.4"
-pytest-cov = "^6.0.0"
-pytest-asyncio = "^0.25.2"
 hypothesis = "^6.122.3"
 
 # Code quality
@@ -58,22 +55,6 @@ timepoint = "cli:main"
 [tool.black]
 line-length = 100
 
-[tool.pytest.ini_options]
-markers = [
-    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
-]
-testpaths = ["test_framework.py"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = [
-    "--strict-markers",
-    "--tb=short",
-    "--cov=.",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-]
-target-version = ['py310', 'py311', 'py312']
 
 [tool.ruff]
 line-length = 100
