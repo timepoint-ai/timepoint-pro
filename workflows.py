@@ -8,7 +8,8 @@ import networkx as nx
 import json
 
 from schemas import Entity, ResolutionLevel, TTMTensor
-from llm import LLMClient
+from llm import LLMClient, EntityPopulation
+from resolution_engine import ResolutionEngine
 from storage import GraphStore
 from graph import create_test_graph
 from validation import Validator
@@ -21,6 +22,7 @@ class WorkflowState(TypedDict):
     resolution: ResolutionLevel
     violations: List[Dict]
     results: Dict
+    entity_populations: Dict[str, EntityPopulation]  # Parallel entity results
 
 def create_entity_training_workflow(llm_client: LLMClient, store: GraphStore):
     """LangGraph workflow for parallel entity training"""
@@ -35,20 +37,52 @@ def create_entity_training_workflow(llm_client: LLMClient, store: GraphStore):
             state["graph"] = graph
         return state
     
-    def populate_entities(state: WorkflowState) -> WorkflowState:
-        results = []
-        for node in state["graph"].nodes():
-            entity_schema = {"entity_id": node, "timestamp": state["timepoint"]}
-            context = {"exposure_history": [], "graph": state["graph"]}
-            population = llm_client.populate_entity(entity_schema, context)
-            results.append(population)
-        state["results"] = {"populations": results}
+    def aggregate_populations(state: WorkflowState) -> WorkflowState:
+        """Aggregate parallel entity populations into entities list"""
+        entities = []
+        populations = state.get("entity_populations", {})
+
+        for entity_id, population in populations.items():
+            # Convert EntityPopulation to Entity object
+            entity = Entity(
+                    entity_id=entity_id,
+                    entity_type="historical_person",  # Default type
+                    temporal_span_start=None,  # Will be set when entity joins timeline
+                    temporal_span_end=None,
+                    resolution_level=state["resolution"],
+                    entity_metadata={
+                        "knowledge_state": population.knowledge_state,
+                        "energy_budget": population.energy_budget,
+                        "personality_traits": population.personality_traits,
+                        "temporal_awareness": population.temporal_awareness,
+                        "confidence": population.confidence,
+                        "current_timepoint": state["timepoint"]  # Store current timepoint in metadata
+                    }
+                )
+            entities.append(entity)
+
+        state["entities"] = entities
+        state["results"] = {"populations": list(populations.values())}
         return state
     
     def validate_entities(state: WorkflowState) -> WorkflowState:
         violations = []
+
+        # Build knowledge map for network flow validation
+        all_entity_knowledge = {}
         for entity in state["entities"]:
-            context = {"exposure_history": [], "graph": state["graph"]}
+            all_entity_knowledge[entity.entity_id] = entity.entity_metadata.get("knowledge_state", [])
+
+        for entity in state["entities"]:
+            context = {
+                "exposure_history": [],  # Could be populated from exposure events
+                "graph": state["graph"],
+                "all_entity_knowledge": all_entity_knowledge,
+                "previous_knowledge": [],  # Could be populated from previous timepoint data
+                "previous_personality": [],  # Could be populated from previous timepoint data
+                "timepoint_id": state["timepoint"],  # For temporal causality validation
+                "store": None  # Would need to be passed in for full validation
+            }
             entity_violations = Validator.validate_all(entity, context)
             violations.extend(entity_violations)
         state["violations"] = violations
@@ -83,17 +117,114 @@ def create_entity_training_workflow(llm_client: LLMClient, store: GraphStore):
                     # Keep full tensor for detailed operations
 
         return state
+
+    def progressive_training_check(state: WorkflowState) -> WorkflowState:
+        """Check for entities that need progressive training elevation (Mechanism 2.4)"""
+        resolution_engine = ResolutionEngine(store)
+
+        elevation_candidates = []
+        for entity in state["entities"]:
+            if resolution_engine.check_retraining_needed(entity, state["graph"]):
+                elevation_candidates.append(entity)
+
+        if elevation_candidates:
+            print(f"🎯 Progressive training: {len(elevation_candidates)} entities need elevation")
+
+            for entity in elevation_candidates:
+                # Simple elevation logic for workflow context
+                current_level_value = list(ResolutionLevel).index(entity.resolution_level)
+                if current_level_value < len(ResolutionLevel) - 1:
+                    target_level = list(ResolutionLevel)[current_level_value + 1]
+                    if resolution_engine.elevate_resolution(entity, target_level):
+                        print(f"⬆️ Elevated {entity.entity_id} to {target_level.value}")
+        else:
+            print("✅ No entities need progressive training elevation")
+
+        return state
     
+    def populate_entities_parallel(state: WorkflowState) -> WorkflowState:
+        """Populate all entities in parallel using asyncio"""
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+
+        async def populate_entity_async(entity_id: str) -> tuple[str, EntityPopulation]:
+            """Async wrapper for entity population"""
+            entity_schema = {"entity_id": entity_id, "timestamp": state["timepoint"]}
+            context = {"exposure_history": [], "graph": state["graph"]}
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor() as executor:
+                population = await loop.run_in_executor(
+                    executor,
+                    lambda: llm_client.populate_entity(entity_schema, context)
+                )
+            return entity_id, population
+
+        async def populate_all_entities():
+            """Populate all entities concurrently"""
+            entity_ids = list(state["graph"].nodes())
+            tasks = [populate_entity_async(entity_id) for entity_id in entity_ids]
+            results = await asyncio.gather(*tasks)
+            return dict(results)
+
+        # Run the async population
+        populations = asyncio.run(populate_all_entities())
+        state["entity_populations"] = populations
+        return state
+
     workflow.add_node("load_graph", load_graph)
-    workflow.add_node("populate_entities", populate_entities)
+    workflow.add_node("populate_entities_parallel", populate_entities_parallel)
+    workflow.add_node("aggregate_populations", aggregate_populations)
     workflow.add_node("validate_entities", validate_entities)
     workflow.add_node("compress_tensors", compress_tensors)
-    
-    workflow.add_edge("load_graph", "populate_entities")
-    workflow.add_edge("populate_entities", "validate_entities")
+    workflow.add_node("progressive_training_check", progressive_training_check)
+
+    workflow.add_edge("load_graph", "populate_entities_parallel")
+    workflow.add_edge("populate_entities_parallel", "aggregate_populations")
+    workflow.add_edge("aggregate_populations", "validate_entities")
     workflow.add_edge("validate_entities", "compress_tensors")
-    workflow.add_edge("compress_tensors", END)
-    
+    workflow.add_edge("compress_tensors", "progressive_training_check")
+    workflow.add_edge("progressive_training_check", END)
+
     workflow.set_entry_point("load_graph")
-    
+
     return workflow.compile()
+
+def retrain_high_traffic_entities(graph: nx.Graph, store: GraphStore, llm_client: LLMClient):
+    """
+    Progressive training: Check all entities and retrain/elevate those that need it
+    based on centrality scores and query patterns (Mechanism 2.4)
+    """
+    resolution_engine = ResolutionEngine(store)
+    entities = store.get_all_entities()
+
+    retrained_count = 0
+    elevated_count = 0
+
+    for entity in entities:
+        if resolution_engine.check_retraining_needed(entity, graph):
+            print(f"🔄 Retraining needed for {entity.entity_id} (centrality: {entity.eigenvector_centrality:.3f}, queries: {entity.query_count}, training: {entity.training_count})")
+
+            # Determine target resolution based on centrality and usage
+            current_level_value = list(ResolutionLevel).index(entity.resolution_level)
+
+            # High centrality entities get higher priority elevation
+            if entity.eigenvector_centrality > 0.5:
+                target_level = min(ResolutionLevel.TRAINED,
+                                 list(ResolutionLevel)[current_level_value + 2])  # Skip one level
+            elif entity.eigenvector_centrality > 0.3:
+                target_level = min(ResolutionLevel.TRAINED,
+                                 list(ResolutionLevel)[current_level_value + 1])  # Next level
+            else:
+                # Query-driven elevation (more conservative)
+                target_level = min(ResolutionLevel.TRAINED,
+                                 list(ResolutionLevel)[current_level_value + 1])
+
+            # Attempt elevation
+            if resolution_engine.elevate_resolution(entity, target_level):
+                elevated_count += 1
+                print(f"⬆️ Elevated {entity.entity_id} to {target_level.value}")
+            else:
+                print(f"⚠️ Failed to elevate {entity.entity_id}")
+
+    print(f"🎯 Progressive training complete: {elevated_count} entities elevated, {retrained_count} retrained")
+    return elevated_count, retrained_count

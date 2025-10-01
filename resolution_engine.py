@@ -160,6 +160,45 @@ class ResolutionEngine:
 
         return stats
 
+    def check_retraining_needed(self, entity: Entity, graph: Optional[nx.Graph] = None) -> bool:
+        """
+        Determine if an entity needs retraining/elevation based on:
+        - High eigenvector centrality with low training iterations
+        - High query count relative to current resolution level
+        """
+        # Get current centrality (recompute if graph provided, otherwise use stored value)
+        centrality = entity.eigenvector_centrality
+        if graph and entity.entity_id in graph:
+            try:
+                centrality = nx.eigenvector_centrality_numpy(graph)[entity.entity_id]
+            except:
+                # Fallback to stored value if computation fails
+                centrality = entity.eigenvector_centrality
+
+        # High centrality + low training iterations = needs retraining
+        training_iterations = entity.training_count
+        if centrality > 0.3 and training_iterations < 3:
+            return True
+
+        # High query count = needs elevation (relative to current resolution)
+        query_count = entity.query_count
+        current_resolution_value = list(ResolutionLevel).index(entity.resolution_level)
+
+        # Thresholds increase with resolution level
+        elevation_thresholds = {
+            ResolutionLevel.TENSOR_ONLY: 5,   # Low threshold for basic elevation
+            ResolutionLevel.SCENE: 10,        # Medium threshold
+            ResolutionLevel.GRAPH: 15,        # Higher threshold
+            ResolutionLevel.DIALOG: 25,       # High threshold
+            ResolutionLevel.TRAINED: 50       # Very high threshold (max training)
+        }
+
+        threshold = elevation_thresholds.get(entity.resolution_level, 10)
+        if query_count > threshold and current_resolution_value < len(ResolutionLevel) - 1:
+            return True
+
+        return False
+
     def elevate_resolution(self, entity: Entity, target_resolution: ResolutionLevel) -> bool:
         """
         Attempt to elevate an entity's resolution level.

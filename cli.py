@@ -17,6 +17,46 @@ from schemas import ResolutionLevel, Entity, ExposureEvent, Timepoint
 from reporting import generate_report, generate_markdown_report
 from temporal_chain import build_temporal_chain
 from query_interface import QueryInterface
+from tensors import TensorCompressor
+from schemas import TTMTensor
+from validation import Validator
+import json
+
+def _compress_entity_tensors(entity: Entity):
+    """Compress entity tensors for storage efficiency (Mechanism 1.1)"""
+    from schemas import ResolutionLevel
+
+    # Create synthetic tensor data for demonstration
+    # In practice, this would be actual tensor data from LLM embeddings
+    import numpy as np
+    context_tensor = np.random.randn(50)  # Simulated context vector
+    biology_tensor = np.array([entity.entity_metadata.get("age", 50), 0.8, 0.7])  # age, health, energy
+    behavior_tensor = np.random.randn(10)  # Personality traits
+
+    # Apply compression based on resolution level
+    if entity.resolution_level == ResolutionLevel.TENSOR_ONLY:
+        # TENSOR_ONLY: Store ONLY compressed representation
+        compressed = {
+            "context_pca": TensorCompressor.compress(context_tensor, "pca"),
+            "context_svd": TensorCompressor.compress(context_tensor, "svd"),
+            "biology_pca": TensorCompressor.compress(biology_tensor, "pca"),
+            "behavior_pca": TensorCompressor.compress(behavior_tensor, "pca")
+        }
+        entity.entity_metadata["compressed"] = {k: v.tolist() for k, v in compressed.items()}
+        # Remove full tensor data to save space
+        if hasattr(entity, 'tensor'):
+            entity.tensor = None
+
+    else:
+        # Higher resolutions: Keep full tensor but also store compressed version
+        compressed = {
+            "context_pca": TensorCompressor.compress(context_tensor, "pca"),
+            "context_svd": TensorCompressor.compress(context_tensor, "svd"),
+            "biology_pca": TensorCompressor.compress(biology_tensor, "pca"),
+            "behavior_pca": TensorCompressor.compress(behavior_tensor, "pca")
+        }
+        entity.entity_metadata["compressed"] = {k: v.tolist() for k, v in compressed.items()}
+        # Keep full tensor for detailed operations
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
@@ -463,6 +503,32 @@ def run_temporal_training(cfg: DictConfig, store: GraphStore, llm_client: LLMCli
                     }
                 )
                 store.save_entity(entity)
+
+                # Compress tensors for storage efficiency (Mechanism 1.1)
+                _compress_entity_tensors(entity)
+                store.save_entity(entity)  # Save again with compressed data
+
+                # Enforce validators in temporal evolution (Mechanism 1.2)
+                # Build knowledge map for network flow validation
+                all_entity_knowledge = {}
+                for eid, entity in entities.items():
+                    all_entity_knowledge[eid] = entity.entity_metadata.get("knowledge_state", [])
+
+                validation_context = {
+                    "previous_knowledge": [],  # First timepoint, no previous knowledge
+                    "previous_personality": [],  # No previous personality
+                    "timepoint": timepoint,
+                    "timepoint_id": timepoint.timepoint_id,  # For temporal causality validation
+                    "store": store,
+                    "graph": graph,  # For network flow validation
+                    "all_entity_knowledge": all_entity_knowledge,  # For network flow validation
+                    "exposure_history": []  # Could be populated from exposure events
+                }
+                violations = Validator.validate_all(entity, validation_context)
+                if violations:
+                    for violation in violations:
+                        print(f"  ⚠️  VALIDATION {violation['severity']}: {entity_id} - {violation['message']}")
+
             else:
                 # Subsequent timepoint - update knowledge state
                 current_knowledge = set(entity.entity_metadata.get("knowledge_state", []))
@@ -470,9 +536,39 @@ def run_temporal_training(cfg: DictConfig, store: GraphStore, llm_client: LLMCli
                 # Only add truly new knowledge
                 added_knowledge = new_knowledge - current_knowledge
                 if added_knowledge:
+                    # Store previous state for validation
+                    previous_knowledge = entity.entity_metadata.get("knowledge_state", [])
+                    previous_personality = entity.entity_metadata.get("personality_traits", [])
+
                     updated_knowledge = entity.entity_metadata["knowledge_state"] + list(added_knowledge)
                     entity.entity_metadata["knowledge_state"] = updated_knowledge
                     store.save_entity(entity)
+
+            # Compress tensors for storage efficiency (Mechanism 1.1)
+            _compress_entity_tensors(entity)
+            store.save_entity(entity)  # Save again with compressed data
+
+            # Enforce validators in temporal evolution (Mechanism 1.2)
+            # Build knowledge map for network flow validation
+            all_entity_knowledge = {}
+            for eid, entity in entities.items():
+                all_entity_knowledge[eid] = entity.entity_metadata.get("knowledge_state", [])
+
+            validation_context = {
+                "previous_knowledge": previous_knowledge if 'previous_knowledge' in locals() else [],
+                "previous_personality": previous_personality if 'previous_personality' in locals() else [],
+                "timepoint": timepoint,
+                "timepoint_id": timepoint.timepoint_id,  # For temporal causality validation
+                "store": store,
+                "graph": graph,  # For network flow validation
+                "all_entity_knowledge": all_entity_knowledge,  # For network flow validation
+                "exposure_history": []  # Could be populated from exposure events
+            }
+            violations = Validator.validate_all(entity, validation_context)
+            if violations:
+                for violation in violations:
+                    print(f"  ⚠️  VALIDATION {violation['severity']}: {entity_id} - {violation['message']}")
+                    # For ERROR severity, we could block the update, but for now just log
 
             # Record exposure events for new knowledge
             exposure_events = []
