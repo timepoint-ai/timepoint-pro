@@ -1,6 +1,9 @@
 # Use a Node.js image as the base, as claude code is an npm package
 FROM node:20-alpine
 
+# FIX: Install bash to provide a robust POSIX shell environment for the Claude CLI
+RUN apk update && apk add --no-cache bash
+
 # Set the working directory inside the container
 WORKDIR /code
 
@@ -9,12 +12,9 @@ WORKDIR /code
 RUN npm install -g @anthropic-ai/claude-code
 
 # Set a non-root user for security (optional but recommended)
-RUN adduser -D appuser
+# Set /bin/bash as the default shell for the new user
+RUN adduser -D appuser -s /bin/bash
 USER appuser
 
 # Set the entrypoint to the claude CLI
 ENTRYPOINT ["claude"]
-
-# When the user runs the container, they will be dropped into the claude tool.
-# This ensures that any changes made within the container are immediately visible 
-# to the 'claude' agent, and that 'claude' can interact with the mounted volume.
