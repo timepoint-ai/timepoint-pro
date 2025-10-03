@@ -28,7 +28,6 @@ echo "✅ Homebrew found."
 # 2. Install Docker CLI and Colima
 echo "⚙️ Installing docker and colima via Homebrew..."
 # Using 'brew install' will automatically handle upgrades if they are outdated.
-# The logs show that docker was upgraded from 20.10.21 to 28.5.0, which is fine.
 brew install docker colima
 
 # 3. Start Colima (Docker Desktop alternative)
@@ -58,6 +57,9 @@ cat << EOF > Dockerfile
 # Use a Node.js image as the base, as claude code is an npm package
 FROM node:20-alpine
 
+# FIX: Install bash to provide a robust POSIX shell environment for the Claude CLI
+RUN apk update && apk add --no-cache bash
+
 # Set the working directory inside the container
 WORKDIR /code
 
@@ -66,51 +68,92 @@ WORKDIR /code
 RUN npm install -g @anthropic-ai/claude-code
 
 # Set a non-root user for security (optional but recommended)
-RUN adduser -D appuser
+# Set /bin/bash as the default shell for the new user
+RUN adduser -D appuser -s /bin/bash
 USER appuser
 
 # Set the entrypoint to the claude CLI
 ENTRYPOINT ["claude"]
-
-# When the user runs the container, they will be dropped into the claude tool.
-# This ensures that any changes made within the container are immediately visible 
-# to the 'claude' agent, and that 'claude' can interact with the mounted volume.
 EOF
 
-# Create the run.sh script
-echo "▶️ Writing run.sh execution script..."
-cat << EOF > run.sh
+# Define the content of run.sh
+RUN_SH_CONTENT=$(cat << EOF
 #!/bin/bash
-# Starts the Docker container, mounts the current directory to /code inside the container,
-# and executes the 'claude' command.
+# Starts the Docker container, mounts the current directory's parent (the project root) 
+# to /code inside the container, and executes the 'claude' command.
 
+# 1. Clean up any previous stopped container with the same name
+# This prevents 'container name already in use' errors. Output is suppressed.
+docker rm -f claude-sandbox >/dev/null 2>&1
+
+# 2. Check for the 'yolo' argument to enable the dangerous, permission-skipping mode.
+# This allows Claude to execute commands without explicitly asking for permission.
+CLAUDE_ARGS=()
+if [[ "\$1" == "yolo" ]]; then
+  echo "⚠️ WARN: Running Claude in 'YOLO Mode' (--dangerously-skip-permissions). Be cautious! 
+
+
+
+
+
+
+
+
+
+[Image of a warning sign]
+
+
+
+
+"
+  CLAUDE_ARGS+=("--dangerously-skip-permissions")
+  shift # Remove 'yolo' from the arguments passed to claude
+fi
+
+# 3. Run the container
 # Ensure the container runs interactively (-it), deletes itself on exit (--rm),
 # and mounts the local code directory.
+# Mount the parent directory (..) to /code inside the container.
+# This allows Claude to see the entire project root when run from inside the sandbox folder.
+# Pass the collected claude arguments and the rest of the user's arguments.
 docker run \\
   --name claude-sandbox \\
   -it \\
   --rm \\
-  -v "$(pwd):/code" \\
-  $IMAGE_NAME "\$@"
+  -v "\$(pwd)/..:/code" \\
+  $IMAGE_NAME "\${CLAUDE_ARGS[@]}" "\$@"
 EOF
+)
 
-chmod +x run.sh
+# 5. Full Purge: Clean up old image and container before building
+echo "🧹 Fully purging previous Docker image and container..."
+# Stop and remove the old container instance if it exists
+docker rm -f claude-sandbox >/dev/null 2>&1 || true
+# Remove the old image if it exists. The -f flag forces removal even if it's currently used (which it shouldn't be).
+docker rmi -f "$IMAGE_NAME" >/dev/null 2>&1 || true 
 
-# 5. Build the Docker Image
+# 6. Build the Docker Image
 echo "🛠️ Building Docker image: $IMAGE_NAME..."
+# set -e ensures that the script stops here if the build fails.
 docker build -t "$IMAGE_NAME" .
+
+# 7. Write and permission run.sh only if the build succeeded (due to 'set -e')
+echo "▶️ Writing run.sh execution script..."
+echo "$RUN_SH_CONTENT" > run.sh
+chmod +x run.sh
 
 echo "=========================================================="
 echo "             🎉 Setup Complete! 🎉"
 echo "=========================================================="
 echo "Next Steps:"
-echo "1. Navigate to the project directory:"
-echo "   cd $PROJECT_DIR"
-echo "2. Run the Claude Code Sandbox:"
+echo "1. Navigate to the project directory (which contains the sandbox folder):"
+echo "   cd .. && cd $PROJECT_DIR"
+echo "2. Run the Claude Code Sandbox in standard mode (requires confirmation for actions):"
 echo "   ./run.sh"
+echo "3. Run the Claude Code Sandbox in 'YOLO Mode' (no confirmation, high autonomy):"
+echo "   ./run.sh yolo"
 echo ""
-echo "This command will launch the container and drop you directly into the 'claude' CLI."
-echo "Your current local directory is mounted to /code inside the container."
+echo "When you run './run.sh', the container's /code directory will be mapped to the parent directory where your main project files are located."
 echo "You may need to provide your Anthropic API Key the first time you run 'claude'."
 
 cd ..

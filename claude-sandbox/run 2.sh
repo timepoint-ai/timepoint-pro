@@ -16,13 +16,7 @@ if [[ "$1" == "yolo" ]]; then
 
 
 
-
-
-
-
 [Image of a warning sign]
-
-
 
 
 "
