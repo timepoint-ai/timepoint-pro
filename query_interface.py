@@ -300,6 +300,21 @@ Return only valid JSON, no other text."""
         # Parse query intent
         query_intent = self.parse_query(query_text)
 
+        # M5: Save query history even if cached (for tracking purposes)
+        # This helps track query patterns regardless of cache hits
+        if query_intent.target_entity:
+            from schemas import QueryHistory
+            import uuid
+            required_resolution = self._get_required_resolution(query_intent.information_type)
+            query_history = QueryHistory(
+                query_id=f"query_{uuid.uuid4().hex[:12]}",
+                entity_id=query_intent.target_entity,
+                query_type=query_intent.information_type,
+                required_resolution=required_resolution.value,
+                resolution_elevated=False  # Will be updated if elevation occurs
+            )
+            self.store.save_query_history(query_history)
+
         # Check cache first
         cache_key = self._get_query_cache_key(query_text, query_intent)
         cached_response = self._get_cached_response(cache_key)
@@ -378,6 +393,18 @@ Return only valid JSON, no other text."""
         self.resolution_engine.record_query(entity.entity_id)
         entity.query_count += 1  # Increment query count for progressive training
         self.store.save_entity(entity)  # Save the updated query count
+
+        # M5: Save query history to database for lazy resolution tracking
+        from schemas import QueryHistory
+        import uuid
+        query_history = QueryHistory(
+            query_id=f"query_{uuid.uuid4().hex[:12]}",
+            entity_id=entity.entity_id,
+            query_type=query_intent.information_type,
+            required_resolution=required_resolution.value,
+            resolution_elevated=success if 'success' in locals() else False
+        )
+        self.store.save_query_history(query_history)
 
         # Determine which tensor type to decompress based on query
         tensor_type = self._get_tensor_type_for_query(query_intent.information_type)

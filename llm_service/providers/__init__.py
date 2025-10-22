@@ -1,6 +1,6 @@
 """Provider implementations for LLM service"""
 
 from llm_service.providers.custom_provider import CustomOpenRouterProvider
-from llm_service.providers.test_provider import TestProvider
+from llm_service.providers.mock_provider import MockProvider
 
-__all__ = ["CustomOpenRouterProvider", "TestProvider"]
+__all__ = ["CustomOpenRouterProvider", "MockProvider"]

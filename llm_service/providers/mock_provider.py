@@ -1,5 +1,5 @@
 """
-Test Provider - Mock LLM for testing and validation
+Mock Provider - Mock LLM for testing and validation
 
 Provides:
 - Dry-run mode (mock responses)
@@ -18,7 +18,7 @@ from llm_service.provider import LLMProvider, LLMResponse
 from llm_service.response_parser import ResponseParser
 
 
-class TestProvider:
+class MockProvider:
     """
     Test provider for dry-run and validation modes.
 
