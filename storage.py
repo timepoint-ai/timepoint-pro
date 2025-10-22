@@ -7,7 +7,7 @@ import networkx as nx
 import json
 from functools import lru_cache
 
-from schemas import Entity, Timeline, SystemPrompt, ExposureEvent, Timepoint, Dialog, RelationshipTrajectory
+from schemas import Entity, Timeline, SystemPrompt, ExposureEvent, Timepoint, Dialog, RelationshipTrajectory, QueryHistory
 
 class GraphStore:
     """Unified storage for entities, timelines, and graphs"""
@@ -100,6 +100,7 @@ class GraphStore:
         from schemas import Timeline
         with Session(self.engine) as session:
             # Delete in order to respect foreign keys
+            session.exec(text("DELETE FROM queryhistory"))
             session.exec(text("DELETE FROM exposureevent"))
             session.exec(text("DELETE FROM entity"))
             session.exec(text("DELETE FROM timepoint"))
@@ -302,3 +303,38 @@ class GraphStore:
             ).first()
 
             return [parent] if parent else []
+
+    # ============================================================================
+    # Query History Storage (Mechanism 5: Query Resolution)
+    # ============================================================================
+
+    def save_query_history(self, query_history: QueryHistory) -> QueryHistory:
+        """Save a query history entry for resolution tracking"""
+        with Session(self.engine) as session:
+            session.add(query_history)
+            session.commit()
+            session.refresh(query_history)
+            return query_history
+
+    def get_query_history_for_entity(self, entity_id: str, limit: int = 100) -> list[QueryHistory]:
+        """Get query history for an entity (most recent first)"""
+        with Session(self.engine) as session:
+            statement = select(QueryHistory).where(
+                QueryHistory.entity_id == entity_id
+            ).order_by(QueryHistory.timestamp.desc()).limit(limit)
+            return list(session.exec(statement).all())
+
+    def get_entity_query_count(self, entity_id: str) -> int:
+        """Get total number of queries for an entity"""
+        with Session(self.engine) as session:
+            statement = select(QueryHistory).where(QueryHistory.entity_id == entity_id)
+            return len(list(session.exec(statement).all()))
+
+    def get_entity_elevation_count(self, entity_id: str) -> int:
+        """Get number of times resolution was elevated for an entity"""
+        with Session(self.engine) as session:
+            statement = select(QueryHistory).where(
+                QueryHistory.entity_id == entity_id,
+                QueryHistory.resolution_elevated == True
+            )
+            return len(list(session.exec(statement).all()))

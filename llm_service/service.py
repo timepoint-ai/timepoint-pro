@@ -11,7 +11,7 @@ import logging
 from llm_service.config import LLMServiceConfig, ServiceMode
 from llm_service.provider import LLMProvider, LLMResponse
 from llm_service.providers.custom_provider import CustomOpenRouterProvider
-from llm_service.providers.test_provider import TestProvider
+from llm_service.providers.mock_provider import MockProvider
 from llm_service.prompt_manager import PromptManager
 from llm_service.response_parser import ResponseParser
 from llm_service.error_handler import ErrorHandler, RetryConfig
@@ -292,10 +292,10 @@ class LLMService:
             Provider instance conforming to LLMProvider protocol
         """
         if self.config.mode == ServiceMode.DRY_RUN:
-            return TestProvider(mode="dry_run")
+            return MockProvider(mode="dry_run")
 
         elif self.config.mode == ServiceMode.VALIDATION:
-            return TestProvider(
+            return MockProvider(
                 mode="validation",
                 validation_model=self.config.validation_mode.model,
                 validation_system=self.config.validation_mode.system_prompt,
@@ -311,7 +311,7 @@ class LLMService:
             )
 
         elif self.config.provider == "test":
-            return TestProvider(mode="dry_run")
+            return MockProvider(mode="dry_run")
 
         else:
             # Default to custom provider
