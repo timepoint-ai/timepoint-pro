@@ -67,11 +67,11 @@ class TimepointConfig(BaseModel):
         description="Temporal resolution: year, month, day, hour, minute"
     )
     before_count: int = Field(
-        ge=0, le=50, default=0,
+        ge=0, le=200, default=0,
         description="Number of timepoints to generate before critical moment"
     )
     after_count: int = Field(
-        ge=0, le=50, default=0,
+        ge=0, le=200, default=0,
         description="Number of timepoints to generate after critical moment"
     )
 

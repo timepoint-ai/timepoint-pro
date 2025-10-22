@@ -13,17 +13,30 @@ Workflow:
 
 Target: 6,100+ training examples total
 
+MAX Mode (--max):
+    Creates ONE massive vertical simulation with:
+    - 12-124 entities (characters, locations, abstract concepts)
+    - Up to 200 timepoints
+    - All 17 mechanisms at maximum depth
+    - TRAINED resolution for all main characters
+    - Dedicated Oxen repo + fine-tuning branch
+
 Usage:
+    # Standard mode
     export OPENROUTER_API_KEY=your_key
     export OXEN_API_TOKEN=your_token
     export LLM_SERVICE_ENABLED=true
     python run_character_engine.py
+
+    # MAX mode - single massive vertical simulation
+    python run_character_engine.py --max
 """
 
 import os
 import sys
 import json
 import logging
+import argparse
 from datetime import datetime
 from typing import List, Dict, Any
 from pathlib import Path
@@ -321,6 +334,364 @@ class CharacterEngine:
         # Use HorizontalGenerator for real variations
         logger.info("Generating horizontal variations...")
 
+    def run_max_mode(self, num_entities: int = 24, num_timepoints: int = 50) -> Dict[str, Any]:
+        """
+        MAX Mode: Generate one massive vertical simulation showcasing all 17 mechanisms.
+
+        This creates a single comprehensive scenario with:
+        - Multiple characters at TRAINED resolution
+        - Extensive temporal depth (up to 200 timepoints)
+        - All 17 Timepoint mechanisms fully utilized
+        - Dedicated Oxen repo for fine-tuning
+
+        Args:
+            num_entities: Number of entities (12-124)
+            num_timepoints: Number of timepoints (10-200)
+
+        Returns:
+            Statistics dictionary
+        """
+        start_time = datetime.now()
+
+        logger.info("="*80)
+        logger.info("TIMEPOINT CHARACTER ENGINE - MAX MODE")
+        logger.info("="*80)
+        logger.info(f"Start time: {start_time}")
+        logger.info(f"Configuration:")
+        logger.info(f"  Entities: {num_entities}")
+        logger.info(f"  Timepoints: {num_timepoints}")
+        logger.info(f"  Target: Maximum vertical depth + all 17 mechanisms")
+        logger.info("")
+
+        try:
+            # Create the massive scenario config
+            logger.info("📋 Creating MAX scenario configuration...")
+            max_config = self._create_max_scenario_config(num_entities, num_timepoints)
+
+            logger.info("🎬 Running massive vertical simulation...")
+            logger.info(f"   Scenario: {max_config.world_id}")
+            logger.info(f"   Entities: {max_config.entities.count}")
+            logger.info(f"   Timepoints: {max_config.timepoints.count + max_config.timepoints.before_count + max_config.timepoints.after_count}")
+            logger.info("")
+
+            if self.dry_run:
+                # Dry run: create mock examples
+                logger.info("DRY RUN: Creating mock examples...")
+                all_examples = self._create_mock_examples(max_config, count=num_entities * num_timepoints)
+            else:
+                # Real run: execute massive simulation
+                logger.info("⚡ Executing simulation with real LLM...")
+                result = simulate_event(
+                    max_config.scenario_description,
+                    self.llm,
+                    self.store,
+                    context={
+                        "max_entities": max_config.entities.count,
+                        "max_timepoints": num_timepoints,
+                        "temporal_mode": "pearl",
+                        "require_trained_resolution": True  # Force TRAINED for main characters
+                    },
+                    save_to_db=False
+                )
+
+                # Format with CharacterRoleplayFormatter for each main character
+                logger.info("📝 Formatting training examples...")
+                all_examples = []
+
+                # Format for multiple character perspectives
+                main_characters = ["detective", "doctor", "villain", "witness"]
+                for char in main_characters:
+                    logger.info(f"   Formatting perspective: {char}")
+                    formatter = CharacterRoleplayFormatter(character_focus=char)
+                    examples = formatter.format_simulation(result, max_config)
+                    all_examples.extend(examples)
+                    logger.info(f"     → Generated {len(examples)} examples for {char}")
+
+            # Save to disk
+            logger.info("")
+            logger.info("💾 Saving MAX mode training data...")
+            max_output_dir = self.output_dir / "max_mode"
+            max_output_dir.mkdir(parents=True, exist_ok=True)
+
+            max_path = max_output_dir / f"max_vertical_{num_entities}e_{num_timepoints}t.jsonl"
+            with open(max_path, 'w') as f:
+                for example in all_examples:
+                    f.write(json.dumps(example) + '\n')
+            logger.info(f"   Saved: {max_path} ({len(all_examples)} examples)")
+
+            # Upload to Oxen with dedicated repo
+            if not self.dry_run and self.oxen_client:
+                logger.info("")
+                logger.info("📤 Uploading to Oxen.ai with dedicated fine-tuning branch...")
+                self._upload_max_mode_to_oxen(all_examples, num_entities, num_timepoints, max_path)
+
+            # Calculate statistics
+            end_time = datetime.now()
+            duration = (end_time - start_time).total_seconds()
+
+            stats = {
+                "mode": "MAX",
+                "total_examples": len(all_examples),
+                "entities": num_entities,
+                "timepoints": num_timepoints,
+                "duration_seconds": duration,
+                "output_path": str(max_path),
+                "cost_usd": 0.0  # TODO: track from LLM service
+            }
+
+            logger.info("")
+            logger.info("="*80)
+            logger.info("MAX MODE COMPLETE")
+            logger.info("="*80)
+            logger.info(f"Total examples: {len(all_examples):,}")
+            logger.info(f"Entities: {num_entities}")
+            logger.info(f"Timepoints: {num_timepoints}")
+            logger.info(f"Duration: {duration:.1f}s ({duration/60:.1f} min)")
+            logger.info(f"Output: {max_path}")
+            logger.info("")
+
+            return stats
+
+        except Exception as e:
+            logger.error(f"MAX mode failed with error: {e}")
+            raise
+
+    def _create_max_scenario_config(self, num_entities: int, num_timepoints: int) -> Any:
+        """Create configuration for maximum depth scenario"""
+        from generation.config_schema import SimulationConfig, EntityConfig, TimepointConfig, TemporalConfig, OutputConfig, ResolutionLevel, TemporalMode
+
+        # Calculate timepoint distribution (before, critical, after)
+        before_count = num_timepoints // 2
+        after_count = num_timepoints - before_count - 1
+
+        return SimulationConfig(
+            scenario_description=(
+                f"The Grand Investigation: A massive criminal conspiracy unfolds across {num_entities} "
+                f"interconnected characters spanning {num_timepoints} timepoints. "
+                "This is the ultimate test of temporal reasoning, featuring: "
+                "a brilliant detective team (Holmes, Watson, Lestrade), "
+                "a criminal mastermind network (Moriarty, Moran, Adler), "
+                "political figures (Prime Minister, Foreign Secretary, diplomats), "
+                "scientific experts (chemists, physicians, forensic analysts), "
+                "witnesses and informants from all social classes, "
+                "London locations as entities (Scotland Yard, 221B Baker Street, Parliament), "
+                "and abstract concepts (Justice, Deception, Loyalty). "
+                "Track the investigation from initial discovery through complex deductions, "
+                "red herrings, betrayals, scientific analysis, political intrigue, "
+                "multiple confrontations, and final resolution. "
+                "REQUIREMENTS: All 17 Timepoint mechanisms must be demonstrated at maximum depth. "
+                "M1: Heterogeneous fidelity (detectives at TRAINED, witnesses at SCENE). "
+                "M2: Progressive training (detectives improve deduction over time). "
+                "M3: Exposure events (track every observation and deduction). "
+                "M4: Physics validation (energy, sleep, biological constraints). "
+                "M5: Query-driven resolution (frequent access elevates detail). "
+                "M6: TTM tensors (unique for each character type). "
+                "M7: Causal temporal chains (strict causality). "
+                "M8: Embodied states (injury, fatigue, illness affect cognition). "
+                "M9: On-demand generation (new witnesses as needed). "
+                "M10: Scene entities (atmosphere shifts with revelations). "
+                "M11: Dialog synthesis (interrogations, debates, confessions). "
+                "M12: Counterfactual branching (what if clues were missed?). "
+                "M13: Multi-entity synthesis (relationship evolution). "
+                "M14: Circadian patterns (time of day affects behavior). "
+                "M15: Entity prospection (predict next moves). "
+                "M16: Animistic entities (buildings, abstract concepts). "
+                "M17: Modal causality (Pearl mode strict causality)."
+            ),
+            world_id=f"max_vertical_{num_entities}entities_{num_timepoints}timepoints",
+            entities=EntityConfig(
+                count=num_entities,
+                types=["human", "building", "abstract"],
+                initial_resolution=ResolutionLevel.TRAINED,  # Start all at TRAINED for MAX mode
+                animism_level=6  # Maximum animism - include all entity types
+            ),
+            timepoints=TimepointConfig(
+                count=1,  # Critical revelation moment
+                before_count=before_count,
+                after_count=after_count,
+                resolution="hour"  # Hour-by-hour tracking
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.PEARL,  # Strict causality
+                enable_counterfactuals=True  # M12
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json"],
+                include_dialogs=True,  # M11
+                include_relationships=True,  # M13
+                include_knowledge_flow=True,  # M3
+                export_ml_dataset=True
+            ),
+            metadata={
+                "mode": "MAX",
+                "character_focus": ["detective", "doctor", "villain", "witness"],
+                "mechanisms_featured": [
+                    "M1_heterogeneous_fidelity",
+                    "M2_progressive_training",
+                    "M3_exposure_events",
+                    "M4_physics_validation",
+                    "M5_query_resolution",
+                    "M6_ttm_tensors",
+                    "M7_causal_chains",
+                    "M8_embodied_states",
+                    "M9_on_demand_generation",
+                    "M10_scene_entities",
+                    "M11_dialog_synthesis",
+                    "M12_counterfactual_branching",
+                    "M13_multi_entity_synthesis",
+                    "M14_circadian_patterns",
+                    "M15_entity_prospection",
+                    "M16_animistic_entities",
+                    "M17_modal_causality"
+                ],
+                "character_ttm_tensors": {
+                    "detective": ["observation_acuity", "deductive_chains", "pattern_recognition", "intuition_strength"],
+                    "doctor": ["medical_knowledge", "empathy_vector", "diagnostic_skill", "ethical_reasoning"],
+                    "villain": ["strategic_planning", "manipulation_skill", "risk_assessment", "ruthlessness"],
+                    "witness": ["memory_reliability", "fear_level", "honesty_index", "suggestibility"]
+                },
+                "temporal_depth": num_timepoints,
+                "expected_training_examples": num_entities * num_timepoints * 4  # 4 character perspectives
+            }
+        )
+
+    def _upload_max_mode_to_oxen(
+        self,
+        examples: List[Dict],
+        num_entities: int,
+        num_timepoints: int,
+        local_path: Path
+    ):
+        """Upload MAX mode data to Oxen with dedicated fine-tuning branch"""
+        if not self.oxen_client:
+            logger.warning("No Oxen client available, skipping upload")
+            return
+
+        try:
+            # Create dedicated repository for MAX mode
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            repo_name = f"timepoint-max-{num_entities}e-{num_timepoints}t-{timestamp}"
+
+            logger.info(f"   Creating Oxen repository: {repo_name}")
+
+            # Create new client instance for this specific repo
+            max_client = OxenClient(
+                repo_name=repo_name,
+                namespace=self.oxen_namespace
+            )
+
+            # Create repository
+            max_client.create_repo(name=repo_name, description=f"MAX mode training data: {num_entities} entities, {num_timepoints} timepoints")
+
+            # Upload the training data
+            logger.info("   Uploading training data...")
+            max_client.upload_dataset(
+                file_path=str(local_path),
+                commit_message=f"Add MAX mode training data: {len(examples)} examples ({num_entities} entities, {num_timepoints} timepoints)",
+                dst_path=f"training_data/max_vertical_{num_entities}e_{num_timepoints}t.jsonl"
+            )
+
+            # Create fine-tuning branch
+            logger.info("   Creating fine-tuning branch...")
+            try:
+                max_client.create_branch(f"finetune-max-{timestamp}")
+                logger.info(f"   ✅ Created branch: finetune-max-{timestamp}")
+            except Exception as e:
+                logger.warning(f"   Could not create branch: {e}")
+
+            # Generate and upload README
+            readme_content = self._generate_max_mode_readme(num_entities, num_timepoints, len(examples))
+            readme_path = self.output_dir / "max_mode" / "README.md"
+            with open(readme_path, 'w') as f:
+                f.write(readme_content)
+
+            max_client.upload_dataset(
+                file_path=str(readme_path),
+                commit_message="Add MAX mode documentation",
+                dst_path="README.md"
+            )
+
+            logger.info(f"   ✅ Upload complete: {self.oxen_namespace}/{repo_name}")
+            logger.info(f"   📊 Repository: https://hub.oxen.ai/{self.oxen_namespace}/{repo_name}")
+            logger.info(f"   🎯 Fine-tuning: Use branch 'finetune-max-{timestamp}'")
+
+        except Exception as e:
+            logger.error(f"   Error uploading to Oxen: {e}")
+
+    def _generate_max_mode_readme(self, num_entities: int, num_timepoints: int, num_examples: int) -> str:
+        """Generate README for MAX mode repository"""
+        return f"""# Timepoint MAX Mode Training Data
+
+**Generated:** {datetime.now().isoformat()}
+
+## Overview
+
+This repository contains training data from Timepoint's **MAX Mode** - a single massive vertical simulation showcasing all 17 Timepoint mechanisms at maximum depth.
+
+## Configuration
+
+- **Entities:** {num_entities}
+- **Timepoints:** {num_timepoints}
+- **Training Examples:** {num_examples:,}
+- **Character Perspectives:** 4 (detective, doctor, villain, witness)
+- **Resolution:** Hour-by-hour temporal tracking
+- **Mechanisms:** All 17 Timepoint mechanisms demonstrated
+
+## Mechanisms Demonstrated
+
+1. **M1: Heterogeneous Fidelity** - Multiple resolution levels (TRAINED for main characters)
+2. **M2: Progressive Training** - Characters improve skills over time
+3. **M3: Exposure Events** - Complete observation tracking
+4. **M4: Physics Validation** - Energy, biological constraints
+5. **M5: Query-Driven Resolution** - Adaptive detail levels
+6. **M6: TTM Tensors** - Character-specific cognitive models
+7. **M7: Causal Temporal Chains** - Strict causality enforcement
+8. **M8: Embodied States** - Physical/cognitive coupling
+9. **M9: On-Demand Generation** - Dynamic entity creation
+10. **M10: Scene Entities** - Atmospheric context
+11. **M11: Dialog Synthesis** - Character interactions
+12. **M12: Counterfactual Branching** - Alternative timelines
+13. **M13: Multi-Entity Synthesis** - Relationship evolution
+14. **M14: Circadian Patterns** - Time-dependent behavior
+15. **M15: Entity Prospection** - Future planning/prediction
+16. **M16: Animistic Entities** - Non-human entities (buildings, concepts)
+17. **M17: Modal Causality** - Pearl-mode causal reasoning
+
+## Training Format
+
+Each example includes:
+- **Prompt:** Character state + temporal context + observations
+- **Completion:** Reasoning chain + deductions + next actions
+- **Context:** Full mechanism metadata + TTM tensors + causal chains
+
+## Fine-Tuning
+
+To fine-tune a model on this data:
+
+1. Navigate to this repository on Oxen.ai
+2. Select the training data file
+3. Use the web UI to create a fine-tuning job
+4. Select branch: `finetune-max-{{timestamp}}`
+
+## Use Cases
+
+- Character roleplay with temporal reasoning
+- Deductive reasoning with embodied constraints
+- Multi-entity perspective modeling
+- Causal chain tracking and validation
+
+## Citation
+
+```
+Timepoint-Daedalus MAX Mode Training Data
+Generated: {datetime.now().strftime("%Y-%m-%d")}
+Entities: {num_entities}, Timepoints: {num_timepoints}
+Examples: {num_examples:,}
+```
+"""
+
+    def generate_horizontal_variations(self, llm, store, count=100):
+
         # Base config for variations
         base_config = SimulationConfig.example_board_meeting()
         base_config.variations.enabled = True
@@ -605,6 +976,29 @@ class CharacterEngine:
 def main():
     """Main entry point for character engine workflow"""
 
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description="Timepoint Character Engine - Generate character-based training data"
+    )
+    parser.add_argument(
+        "--max",
+        action="store_true",
+        help="MAX mode: Generate one massive vertical simulation (12-124 entities, up to 200 timepoints, all 17 mechanisms)"
+    )
+    parser.add_argument(
+        "--entities",
+        type=int,
+        default=24,
+        help="Number of entities for MAX mode (default: 24, max: 124)"
+    )
+    parser.add_argument(
+        "--timepoints",
+        type=int,
+        default=50,
+        help="Number of timepoints for MAX mode (default: 50, max: 200)"
+    )
+    args = parser.parse_args()
+
     # Check environment variables
     llm_enabled = os.getenv("LLM_SERVICE_ENABLED", "false").lower() == "true"
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
@@ -636,25 +1030,50 @@ def main():
         dry_run=dry_run
     )
 
-    # Run workflow
-    stats = engine.run_complete_workflow()
+    # Run workflow based on mode
+    if args.max:
+        logger.info("🚀 RUNNING IN MAX MODE 🚀")
+        logger.info(f"Entities: {args.entities}, Timepoints: {args.timepoints}")
+        stats = engine.run_max_mode(
+            num_entities=min(args.entities, 124),
+            num_timepoints=min(args.timepoints, 200)
+        )
+    else:
+        stats = engine.run_complete_workflow()
 
     # Print final summary
     print("\n" + "="*80)
     print("CHARACTER ENGINE WORKFLOW SUMMARY")
     print("="*80)
-    print(f"Total training examples: {stats['total_examples']:,}")
-    print(f"  Deep cases:            {stats['deep_examples']:,}")
-    print(f"  Breadth cases:         {stats['breadth_examples']:,}")
-    print(f"  Variations:            {stats['variation_examples']:,}")
-    print(f"Duration:                {stats['duration_seconds']:.1f}s ({stats['duration_seconds']/60:.1f} min)")
+
+    if args.max:
+        # MAX mode summary
+        print(f"Mode:                    MAX")
+        print(f"Total training examples: {stats['total_examples']:,}")
+        print(f"Entities:                {stats['entities']}")
+        print(f"Timepoints:              {stats['timepoints']}")
+        print(f"Duration:                {stats['duration_seconds']:.1f}s ({stats['duration_seconds']/60:.1f} min)")
+        if 'output_path' in stats:
+            print(f"Output:                  {stats['output_path']}")
+    else:
+        # Standard mode summary
+        print(f"Mode:                    Standard")
+        print(f"Total training examples: {stats['total_examples']:,}")
+        print(f"  Deep cases:            {stats.get('deep_examples', 0):,}")
+        print(f"  Breadth cases:         {stats.get('breadth_examples', 0):,}")
+        print(f"  Variations:            {stats.get('variation_examples', 0):,}")
+        print(f"Duration:                {stats['duration_seconds']:.1f}s ({stats['duration_seconds']/60:.1f} min)")
+
     print("="*80)
     print("")
 
-    if stats['total_examples'] >= 6100:
+    if not args.max and stats['total_examples'] >= 6100:
         print("✅ SUCCESS: Target of 6,100+ examples achieved!")
-    else:
+    elif not args.max:
         print(f"⚠️  WARNING: Only {stats['total_examples']} examples generated (target: 6,100+)")
+    else:
+        # MAX mode - no specific target, just report completion
+        print(f"✅ MAX MODE COMPLETE: {stats['total_examples']:,} examples generated")
 
     return 0
 
