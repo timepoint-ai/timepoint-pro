@@ -227,7 +227,7 @@ Schema:
                     role="primary",
                     description="Primary test entity",
                     initial_knowledge=["fact1", "fact2", "fact3"],
-                    relationships={"test_entity_2": "ally"}
+                    relationships={"test_entity_2": "ally", "test_entity_3": "colleague"}
                 ),
                 EntityRosterItem(
                     entity_id="test_entity_2",
@@ -236,6 +236,14 @@ Schema:
                     description="Secondary test entity",
                     initial_knowledge=["fact4", "fact5"],
                     relationships={"test_entity_1": "ally"}
+                ),
+                EntityRosterItem(
+                    entity_id="test_entity_3",
+                    entity_type="human",
+                    role="secondary",
+                    description="Third test entity",
+                    initial_knowledge=["fact6", "fact7", "fact8"],
+                    relationships={"test_entity_1": "colleague"}
                 )
             ],
             timepoints=[
@@ -243,9 +251,25 @@ Schema:
                     timepoint_id="tp_001",
                     timestamp="2024-01-01T09:00:00",
                     event_description="Scene opening",
-                    entities_present=["test_entity_1", "test_entity_2"],
+                    entities_present=["test_entity_1", "test_entity_2", "test_entity_3"],
                     importance=0.8,
                     causal_parent=None
+                ),
+                TimepointSpec(
+                    timepoint_id="tp_002",
+                    timestamp="2024-01-01T12:00:00",
+                    event_description="Mid-scene development",
+                    entities_present=["test_entity_1", "test_entity_2", "test_entity_3"],
+                    importance=0.7,
+                    causal_parent="tp_001"
+                ),
+                TimepointSpec(
+                    timepoint_id="tp_003",
+                    timestamp="2024-01-01T17:00:00",
+                    event_description="Scene conclusion",
+                    entities_present=["test_entity_1", "test_entity_2", "test_entity_3"],
+                    importance=0.9,
+                    causal_parent="tp_002"
                 )
             ],
             global_context="Test context for development"
@@ -422,7 +446,7 @@ class ResolutionAssigner:
         self,
         spec: SceneSpecification,
         graph: nx.Graph
-    ) -> Dict[str, ResolutionLevel]:
+    ) -> Tuple[Dict[str, ResolutionLevel], float]:
         """
         Assign resolution levels based on role and centrality.
 
@@ -431,7 +455,7 @@ class ResolutionAssigner:
             graph: NetworkX graph for centrality calculation
 
         Returns:
-            Dict mapping entity_id to ResolutionLevel
+            Tuple of (assignments dict, estimated_cost float)
         """
         assignments = {}
 
@@ -469,14 +493,35 @@ class ResolutionAssigner:
 
             assignments[entity_id] = level
 
-        print(f"🎯 Assigned resolutions: "
-              f"TRAINED={sum(1 for v in assignments.values() if v == ResolutionLevel.TRAINED)}, "
-              f"DIALOG={sum(1 for v in assignments.values() if v == ResolutionLevel.DIALOG)}, "
-              f"GRAPH={sum(1 for v in assignments.values() if v == ResolutionLevel.GRAPH)}, "
-              f"SCENE={sum(1 for v in assignments.values() if v == ResolutionLevel.SCENE)}, "
-              f"TENSOR={sum(1 for v in assignments.values() if v == ResolutionLevel.TENSOR_ONLY)}")
+        # Calculate cost estimates based on resolution distribution
+        cost_per_level = {
+            ResolutionLevel.TRAINED: 0.50,  # $0.50 per entity (model training)
+            ResolutionLevel.DIALOG: 0.15,   # $0.15 per entity (dialog synthesis)
+            ResolutionLevel.GRAPH: 0.05,    # $0.05 per entity (graph processing)
+            ResolutionLevel.SCENE: 0.02,    # $0.02 per entity (scene aggregation)
+            ResolutionLevel.TENSOR_ONLY: 0.005  # $0.005 per entity (tensor compression)
+        }
 
-        return assignments
+        estimated_cost = sum(cost_per_level.get(level, 0.0) for level in assignments.values())
+
+        counts = {
+            'TRAINED': sum(1 for v in assignments.values() if v == ResolutionLevel.TRAINED),
+            'DIALOG': sum(1 for v in assignments.values() if v == ResolutionLevel.DIALOG),
+            'GRAPH': sum(1 for v in assignments.values() if v == ResolutionLevel.GRAPH),
+            'SCENE': sum(1 for v in assignments.values() if v == ResolutionLevel.SCENE),
+            'TENSOR': sum(1 for v in assignments.values() if v == ResolutionLevel.TENSOR_ONLY)
+        }
+
+        print(f"🎯 Assigned resolutions: "
+              f"TRAINED={counts['TRAINED']}, "
+              f"DIALOG={counts['DIALOG']}, "
+              f"GRAPH={counts['GRAPH']}, "
+              f"SCENE={counts['SCENE']}, "
+              f"TENSOR={counts['TENSOR']}")
+        print(f"💰 Estimated cost: ${estimated_cost:.2f} (vs ${len(assignments) * 0.50:.2f} naive full-resolution)")
+        print(f"📊 Cost reduction: {(1 - estimated_cost / (len(assignments) * 0.50)) * 100:.1f}%")
+
+        return assignments, estimated_cost
 
 
 # ============================================================================
@@ -555,7 +600,7 @@ class OrchestratorAgent:
 
         # Step 4: Assign resolution levels
         print("\n🎯 Step 4: Assigning resolution levels...")
-        resolution_assignments = self.resolution_assigner.assign_resolutions(spec, graph)
+        resolution_assignments, cost_estimate = self.resolution_assigner.assign_resolutions(spec, graph)
 
         # Step 5: Create Entity objects
         print("\n👥 Step 5: Creating entity objects...")
@@ -593,7 +638,8 @@ class OrchestratorAgent:
             "graph": graph,
             "exposure_events": exposure_events,
             "temporal_agent": temporal_agent,
-            "resolution_assignments": resolution_assignments
+            "resolution_assignments": resolution_assignments,
+            "estimated_cost": cost_estimate
         }
 
     def _create_entities(

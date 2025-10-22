@@ -187,6 +187,21 @@ class ExposureEvent(SQLModel, table=True):
     confidence: float = Field(default=1.0)
     timepoint_id: Optional[str] = Field(default=None, index=True)  # link to timepoint
 
+# ============================================================================
+# Mechanism 5: Query Resolution - Query History Tracking
+# ============================================================================
+
+class QueryHistory(SQLModel, table=True):
+    """Track query patterns for lazy resolution elevation (Mechanism 5)"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    query_id: str = Field(unique=True, index=True)
+    entity_id: str = Field(foreign_key="entity.entity_id", index=True)
+    query_type: str  # knowledge, relationships, actions, dialog, general
+    required_resolution: str  # The resolution level required for this query
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    success: bool = True  # Whether the query was successfully answered
+    resolution_elevated: bool = False  # Whether resolution was elevated for this query
+
 class Timepoint(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     timepoint_id: str = Field(unique=True, index=True)

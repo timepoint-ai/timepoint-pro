@@ -145,34 +145,102 @@ class LLMClient:
                 "they've acquired and how their state has changed."
             )
 
-        system_prompt = "You are an expert at generating realistic entity information for historical simulations."
-        user_prompt = f"""Generate entity information for {entity_id}.
+        system_prompt = "You are an expert at generating realistic entity information for historical simulations. You must provide complete, historically accurate data for all fields."
+
+        # Build few-shot examples for better consistency
+        few_shot_example = """
+Example output for entity "alexander_hamilton":
+{
+  "entity_id": "alexander_hamilton",
+  "knowledge_state": [
+    "Served as first Secretary of the Treasury",
+    "Advocated for strong central government",
+    "Wrote majority of Federalist Papers",
+    "Founded First Bank of United States",
+    "Born in Caribbean, immigrated to colonies"
+  ],
+  "energy_budget": 85.0,
+  "personality_traits": [0.8, -0.3, 0.6, 0.9, -0.2],
+  "temporal_awareness": "Acutely aware of historical moment, forward-looking",
+  "confidence": 0.9
+}"""
+
+        user_prompt = f"""Generate COMPLETE entity information for {entity_id}.
 Context: {context}{previous_context}
+
+CRITICAL REQUIREMENTS:
+1. knowledge_state MUST contain 3-8 specific, concrete knowledge items
+2. DO NOT return empty arrays
+3. Knowledge items must be historically accurate and contextually relevant
+
+{few_shot_example}
+
+Now generate for entity "{entity_id}":
 
 Return a JSON object with these exact fields:
 - entity_id: string (must be "{entity_id}")
-- knowledge_state: array of strings (3-8 knowledge items)
+- knowledge_state: array of 3-8 strings (REQUIRED - minimum 3 items)
 - energy_budget: number between 0-100
 - personality_traits: array of exactly 5 floats between -1 and 1
 - temporal_awareness: string describing time perception
 - confidence: number between 0 and 1
 
-Return only valid JSON, no other text."""
+Return ONLY valid JSON with ALL fields populated, no other text."""
 
-        # Make structured call
-        result = self.service.structured_call(
-            system=system_prompt,
-            user=user_prompt,
-            schema=EntityPopulation,
-            temperature=0.7,
-            max_tokens=1000,
-            model=model,
-            call_type="populate_entity",
-        )
+        # Make structured call with intelligent retry logic
+        max_retries = 3
+        models_to_try = [
+            model or self.default_model,
+            "meta-llama/llama-3.1-405b-instruct",  # Fallback to larger model
+            "qwen/qwen-2.5-72b-instruct"  # Final fallback to different open-source provider
+        ]
 
-        # FIX: Explicitly set entity_id from schema if not in LLM response or empty
-        if not result.entity_id or result.entity_id == "":
-            result.entity_id = entity_id
+        for attempt in range(max_retries):
+            # Adjust temperature: lower for consistency, increase if stuck
+            temperature = 0.5 if attempt == 0 else 0.3 if attempt == 1 else 0.8
+
+            # Try different models on retry
+            current_model = models_to_try[min(attempt, len(models_to_try) - 1)]
+
+            try:
+                result = self.service.structured_call(
+                    system=system_prompt,
+                    user=user_prompt,
+                    schema=EntityPopulation,
+                    temperature=temperature,
+                    max_tokens=1000,
+                    model=current_model,
+                    call_type="populate_entity",
+                )
+
+                # FIX: Explicitly set entity_id from schema if not in LLM response or empty
+                if not result.entity_id or result.entity_id == "":
+                    result.entity_id = entity_id
+
+                # Check if knowledge_state is empty and retry if needed
+                if len(result.knowledge_state) > 0:
+                    if attempt > 0:
+                        print(f"✅ LLM succeeded on attempt {attempt + 1} with temp={temperature}, model={current_model}")
+                    break
+
+                # If empty and not last attempt, retry with different strategy
+                if attempt < max_retries - 1:
+                    print(f"⚠️  LLM returned empty knowledge_state (attempt {attempt+1}/{max_retries})")
+                    print(f"   Retrying with temp={temperature}, model={current_model}")
+
+            except Exception as e:
+                print(f"⚠️  LLM call failed on attempt {attempt+1}: {e}")
+                if attempt == max_retries - 1:
+                    raise
+
+        # Fallback: If knowledge_state is still empty, generate defaults
+        if len(result.knowledge_state) == 0:
+            print(f"⚠️  LLM consistently returns empty knowledge_state, using fallback defaults")
+            result.knowledge_state = [
+                f"Entity {entity_id} exists in this context",
+                f"Present at timepoint: {context.get('timepoint', 'unknown')}",
+                f"Role: {context.get('role', 'participant')}"
+            ]
 
         # Update statistics
         stats = self.service.get_statistics()
