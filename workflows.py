@@ -119,6 +119,13 @@ def create_entity_training_workflow(llm_client: LLMClient, store: GraphStore):
                         "current_timepoint": state["timepoint"]
                     }
                 )
+
+            # Generate TTM tensor for entity (Phase 7)
+            from tensors import generate_ttm_tensor
+            tensor_json = generate_ttm_tensor(entity)
+            if tensor_json:
+                entity.tensor = tensor_json
+
             updated_entities.append(entity)
 
         state["entities"] = updated_entities
@@ -170,13 +177,28 @@ def create_entity_training_workflow(llm_client: LLMClient, store: GraphStore):
     
     def compress_tensors(state: WorkflowState) -> WorkflowState:
         from schemas import ResolutionLevel
+        import logging
 
+        logger = logging.getLogger(__name__)
         entities_compressed = 0
+        entities_missing_tensor = []
+
         for entity in state["entities"]:
-            # Use defensive check for tensor attribute
-            tensor = getattr(entity, 'tensor', None)
-            if tensor:
-                ttm = TTMTensor(**json.loads(tensor))
+            # Phase 7: Expect all entities to have tensor attribute (now generated in pipeline)
+            if not hasattr(entity, 'tensor') or entity.tensor is None:
+                entities_missing_tensor.append(entity.entity_id)
+                logger.error(f"Entity {entity.entity_id} missing tensor attribute - pipeline error")
+                continue
+
+            try:
+                # Deserialize tensor from base64-encoded JSON
+                import base64
+                tensor_dict = json.loads(entity.tensor)
+                ttm = TTMTensor(
+                    context_vector=base64.b64decode(tensor_dict['context_vector']),
+                    biology_vector=base64.b64decode(tensor_dict['biology_vector']),
+                    behavior_vector=base64.b64decode(tensor_dict['behavior_vector'])
+                )
                 context, biology, behavior = ttm.to_arrays()
 
                 # Apply compression based on resolution level
@@ -200,14 +222,15 @@ def create_entity_training_workflow(llm_client: LLMClient, store: GraphStore):
                     # Keep full tensor for detailed operations
 
                 entities_compressed += 1
-            else:
-                # Entity doesn't have tensor attribute - skip with warning
-                print(f"  ⚠️  Skipping tensor compression for {entity.entity_id} - no tensor attribute")
+            except Exception as e:
+                logger.error(f"Failed to compress tensor for {entity.entity_id}: {e}")
+                entities_missing_tensor.append(entity.entity_id)
+
+        if entities_missing_tensor:
+            logger.warning(f"⚠️  {len(entities_missing_tensor)} entities missing tensors: {entities_missing_tensor}")
 
         if entities_compressed > 0:
-            print(f"✓ Compressed tensors for {entities_compressed} entities")
-        else:
-            print("⚠️  No entities had tensor attributes for compression")
+            print(f"✓ Compressed tensors for {entities_compressed}/{len(state['entities'])} entities")
 
         return state
 
@@ -772,12 +795,12 @@ def synthesize_dialog(
 
             # Temporal Context
             "recent_experiences": [
-                {"event": exp["information"], "source": exp["source"], "when": exp["timestamp"]}
+                {"event": exp["information"], "source": exp["source"], "when": str(exp["timestamp"])}
                 for exp in recent_experiences
             ],
             "timepoint_context": {
                 "event": timepoint.event_description,
-                "timestamp": timepoint.timestamp,
+                "timestamp": timepoint.timestamp.isoformat(),  # Phase 7.5: Convert datetime to JSON-serializable string
                 "position_in_chain": get_timepoint_position(timeline, timepoint)
             },
 
@@ -988,13 +1011,22 @@ def analyze_relationship_evolution(
     else:
         overall_trend = "stable"
 
+    # Phase 7.5: Convert datetime objects to strings for JSON serialization
+    serializable_states = []
+    for s in states:
+        state_dict = s.dict()
+        # Convert any datetime objects to ISO format strings
+        if 'timestamp' in state_dict and hasattr(state_dict['timestamp'], 'isoformat'):
+            state_dict['timestamp'] = state_dict['timestamp'].isoformat()
+        serializable_states.append(state_dict)
+
     return RelationshipTrajectory(
         trajectory_id=f"trajectory_{entity_a}_{entity_b}_{relevant_timepoints[0].timepoint_id}_{relevant_timepoints[-1].timepoint_id}",
         entity_a=entity_a,
         entity_b=entity_b,
         start_timepoint=relevant_timepoints[0].timepoint_id,
         end_timepoint=relevant_timepoints[-1].timepoint_id,
-        states=json.dumps([s.dict() for s in states]),
+        states=json.dumps(serializable_states),
         overall_trend=overall_trend,
         key_events=list(set(key_events))  # Remove duplicates
     )
@@ -1010,7 +1042,7 @@ def detect_contradictions(
     contradictions = []
 
     for i, entity_a in enumerate(entities):
-        for entity_b in enumerate(entities[i+1:], i+1)[1]:  # Skip self-comparisons
+        for entity_b in entities[i+1:]:  # Skip self-comparisons (Phase 7.5: Fixed enumerate bug)
             # Compare knowledge claims
             knowledge_a = set(entity_a.entity_metadata.get("knowledge_state", []))
             knowledge_b = set(entity_b.entity_metadata.get("knowledge_state", []))

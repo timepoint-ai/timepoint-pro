@@ -1,37 +1,45 @@
 # MECHANICS.md - Timepoint-Daedalus Technical Specification
 
 **Document Type:** Technical Specification (Design Intent)
-**Status:** Reference document - ALL MECHANISMS IMPLEMENTED ✅
-**Last Updated:** October 21, 2025
+**Status:** Reference document - Implementation In Progress
+**Last Updated:** October 23, 2025
 
 ---
 
 ## Implementation Status
 
-> **Note:** This document describes the complete technical specification. **All 17 mechanisms are now implemented (100%).**
+> **Note:** This document describes the complete technical specification. **Implementation is in progress (7/17 mechanisms tracked as operational).**
 
-**Ground Truth Verified:** October 21, 2025 | **Status:** COMPLETE ✅
+**Current Status:** Phase 6 - Bug Fixes and Mechanism Testing | **Tracked:** 7/17 (41.2%)
 
-**All Mechanisms Implemented (17/17):**
-- ✅ M1: Heterogeneous Fidelity Temporal Graphs (schemas.py, storage.py, resolution_engine.py)
-- ✅ M2: Progressive Training (resolution_engine.py:check_retraining_needed, workflows.py:progressive_training_check)
-- ✅ M3: Exposure Event Tracking (schemas.py:180-189, storage.py:29-48, workflows.py)
-- ✅ M4: Physics Validation (validation.py:54-203 - 5 validators implemented)
-- ✅ M5: Query Resolution (query_interface.py:298-332, schemas.py:194-203, storage.py:311-340)
-- ✅ M6: TTM Tensor Compression (schemas.py:25-46, tensors.py)
-- ✅ M7: Causal Temporal Chains (schemas.py:205-214, temporal_chain.py, storage.py:283-305)
-- ✅ M8: Embodied States (schemas.py:49-107, validation.py:210-242 - body-mind coupling)
-- ✅ M9: On-Demand Generation (query_interface.py:799-944, test coverage: 23 tests)
-- ✅ M10: Scene Entities (schemas.py:114-149 - Environment, Atmosphere, Crowd, workflows.py:266-425)
-- ✅ M11: Dialog Synthesis (schemas.py:220-262, workflows.py:645-813, validation.py:248-457)
-- ✅ M12: Counterfactual Branching (schemas.py:173-190, workflows.py:1413+, storage.py:256-281)
-- ✅ M13: Multi-Entity Synthesis (schemas.py:268-313, workflows.py:819-1122, storage.py:200-230)
-- ✅ M14: Circadian Patterns (schemas.py:319-327, validation.py:464-590)
-- ✅ M15: Entity Prospection (schemas.py:333-367, validation.py:597-701)
-- ✅ M16: Animistic Entities (schemas.py:196-289 - 6 types, validation.py:843-1243)
-- ✅ M17: Modal Temporal Causality (schemas.py:17-23, validation.py:1250-1301, workflows.py)
+**Tracked Mechanisms (7/17):**
+- ✅ M1: Entity Lifecycle Management (orchestrator.py - 42 firings tracked)
+- ✅ M3: Graph Construction & Eigenvector Centrality (orchestrator.py - 21 firings tracked)
+- ✅ M4: Tensor Transformation & Embedding (validation.py - 87 firings tracked)
+- ✅ M7: Causal Chain Generation (workflows.py - 10 firings tracked)
+- ✅ M8: Vertical Timepoint Expansion (workflows.py - 4 firings tracked)
+- ✅ M11: Dialog Synthesis (workflows.py - 25 firings tracked)
+- ✅ M17: Metadata Tracking System (orchestrator.py - 21 firings tracked)
 
-See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for comprehensive validation evidence and [README.md](README.md) for quick start.
+**Testing Progress:**
+- M5: Query Resolution - 16/17 tests (94.1%) ✅
+- M9: On-Demand Generation - 17/23 tests (73.9%) ⚠️
+- M12: Counterfactual Branching - 1/2 tests (50%) ⚠️
+- M13: Multi-Entity Synthesis - 3/11 tests (27.3%) ⚠️
+
+**Implemented but Not Yet Tracked (10 mechanisms):**
+- ⏳ M2: Progressive Training - code exists, needs test coverage
+- ⏳ M5: Query Resolution - 94.1% test pass rate, mechanism working
+- ⏳ M6: TTM Tensor Compression - code exists, needs testing
+- ⏳ M9: On-Demand Entity Generation - 73.9% test pass rate, partially working
+- ⏳ M10: Scene-Level Entity Management - code exists, needs testing
+- ⏳ M12: Counterfactual Branching - code exists, schema issues in tests
+- ⏳ M13: Multi-Entity Synthesis - code exists, mock configuration issues in tests
+- ⏳ M14: Cost-Aware Resolution Adjustment - code exists, needs testing
+- ⏳ M15: Oxen Integration for Fine-Tuning - code exists, needs testing
+- ⏳ M16: Template-Based Scenario Execution - code exists, decorator placement needs verification
+
+See [MECHANISM_COVERAGE_STRATEGY.md](MECHANISM_COVERAGE_STRATEGY.md) for detailed status, test results, and development roadmap. See [README.md](README.md) for quick start.
 
 ---
 
@@ -583,7 +591,7 @@ Response + Metadata
 
 ---
 
-**Document Status:** Technical specification
-**Implementation Status:** 17/17 mechanisms (100%) ✅
-**Ground Truth Verified:** October 22, 2025
-**See Also:** [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for comprehensive validation evidence, [README.md](README.md) for quick start
+**Document Status:** Technical specification and design reference
+**Implementation Status:** 7/17 mechanisms tracked (41.2%) - Phase 6 in progress
+**Last Verified:** October 23, 2025
+**See Also:** [MECHANISM_COVERAGE_STRATEGY.md](MECHANISM_COVERAGE_STRATEGY.md) for current development status, [README.md](README.md) for quick start

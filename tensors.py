@@ -125,3 +125,90 @@ def compute_ttm_metrics(entity: Entity, graph: nx.Graph) -> Dict[str, float]:
         "pagerank": nx.pagerank(graph).get(entity.entity_id, 0.0),
     }
     return metrics
+
+
+def generate_ttm_tensor(entity: Entity) -> Optional[str]:
+    """
+    Generate TTM tensor from entity metadata and return serialized JSON.
+
+    Converts PhysicalTensor, CognitiveTensor, and personality traits into
+    TTMTensor with context_vector, biology_vector, and behavior_vector.
+
+    Args:
+        entity: Entity with physical_tensor, cognitive_tensor, personality_traits in metadata
+
+    Returns:
+        JSON string containing serialized TTMTensor, or None if insufficient data
+    """
+    from schemas import TTMTensor
+    import json
+    import msgspec
+
+    metadata = entity.entity_metadata
+
+    # Extract physical tensor data → biology_vector
+    physical_data = metadata.get("physical_tensor", {})
+    if not physical_data or "age" not in physical_data:
+        # No valid physical data, create minimal biology vector
+        biology_array = np.array([0.0] * 10)  # 10-dimensional biology vector
+    else:
+        # Convert physical tensor to numpy array
+        biology_features = [
+            physical_data.get("age", 0.0) / 100.0,  # Normalize age to 0-1
+            physical_data.get("health_status", 1.0),
+            physical_data.get("pain_level", 0.0),
+            physical_data.get("fever", 36.5) / 45.0,  # Normalize fever ~36-42°C
+            physical_data.get("mobility", 1.0),
+            physical_data.get("stamina", 1.0),
+            physical_data.get("sensory_acuity", {}).get("vision", 1.0) if isinstance(physical_data.get("sensory_acuity"), dict) else 1.0,
+            physical_data.get("sensory_acuity", {}).get("hearing", 1.0) if isinstance(physical_data.get("sensory_acuity"), dict) else 1.0,
+            0.0,  # Reserved
+            0.0   # Reserved
+        ]
+        biology_array = np.array(biology_features[:10])
+
+    # Extract cognitive tensor data → context_vector
+    cognitive_data = metadata.get("cognitive_tensor", {})
+    if not cognitive_data:
+        # No cognitive data, create minimal context vector
+        context_array = np.array([0.0] * 8)
+    else:
+        # Convert cognitive tensor to numpy array
+        knowledge_count = len(cognitive_data.get("knowledge_state", []))
+        context_features = [
+            knowledge_count / 10.0,  # Normalize knowledge count
+            cognitive_data.get("emotional_valence", 0.0),
+            cognitive_data.get("emotional_arousal", 0.0),
+            cognitive_data.get("energy_budget", 100.0) / 100.0,
+            cognitive_data.get("decision_confidence", 0.8),
+            cognitive_data.get("patience_threshold", 50.0) / 100.0,
+            cognitive_data.get("risk_tolerance", 0.5),
+            cognitive_data.get("social_engagement", 0.8)
+        ]
+        context_array = np.array(context_features[:8])
+
+    # Extract personality traits → behavior_vector
+    personality_traits = metadata.get("personality_traits", [])
+    if isinstance(personality_traits, list) and len(personality_traits) >= 5:
+        # Assume Big Five personality model
+        behavior_array = np.array(personality_traits[:8])  # Use up to 8 dimensions
+        if len(behavior_array) < 8:
+            # Pad with zeros if less than 8
+            behavior_array = np.pad(behavior_array, (0, 8 - len(behavior_array)))
+    else:
+        # No personality data, create minimal behavior vector
+        behavior_array = np.array([0.5] * 8)  # Neutral personality
+
+    # Create TTMTensor using from_arrays (which msgpack-encodes the arrays)
+    ttm = TTMTensor.from_arrays(context_array, biology_array, behavior_array)
+
+    # Serialize the TTMTensor object to JSON for storage in entity.tensor
+    # Use model_dump() to get dict, then convert bytes to base64 for JSON compatibility
+    import base64
+    tensor_dict = {
+        "context_vector": base64.b64encode(ttm.context_vector).decode('utf-8'),
+        "biology_vector": base64.b64encode(ttm.biology_vector).decode('utf-8'),
+        "behavior_vector": base64.b64encode(ttm.behavior_vector).decode('utf-8')
+    }
+
+    return json.dumps(tensor_dict)

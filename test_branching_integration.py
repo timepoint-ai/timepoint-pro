@@ -27,6 +27,12 @@ def test_counterfactual_parsing():
     import os
     config = load_config()
     store = GraphStore(config["database"]["url"])
+
+    # Phase 7.5: Rebuild database to ensure schema is up to date (entity.timepoint column)
+    from sqlmodel import SQLModel
+    store._clear_database()
+    SQLModel.metadata.create_all(store.engine)
+
     # Use real API key from environment (required - no mock mode)
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
@@ -65,6 +71,12 @@ def test_counterfactual_response():
     import os
     config = load_config()
     store = GraphStore(config["database"]["url"])
+
+    # Phase 7.5: Rebuild database to ensure schema is up to date (entity.timepoint column)
+    from sqlmodel import SQLModel
+    store._clear_database()
+    SQLModel.metadata.create_all(store.engine)
+
     # Use real API key from environment (required - no mock mode)
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
