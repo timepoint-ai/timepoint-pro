@@ -1243,6 +1243,12 @@ class OrchestratorAgent:
                 entity_metadata=metadata
             )
 
+            # Phase 7: Generate TTM tensor for entity (Phase 7 orchestrator completion)
+            from tensors import generate_ttm_tensor
+            tensor_json = generate_ttm_tensor(entity)
+            if tensor_json:
+                entity.tensor = tensor_json
+
             entities.append(entity)
 
         print(f"   ✓ Created {len(entities)} entity objects")

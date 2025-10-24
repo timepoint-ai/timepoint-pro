@@ -14,13 +14,13 @@ Timepoint-Daedalus enables you to:
 - **Export results** - Reports in Markdown, JSON, CSV with compression
 - **Optimize costs** - 95% reduction via adaptive fidelity (tensor compression)
 
-**Status**: Validated and Production Ready ✅
-- All 17 core mechanisms implemented (M1-M17)
-- 462 tests collected (17 E2E, 445 integration/unit)
-- Real LLM integration validated (requires `OPENROUTER_API_KEY`)
+**Status**: Active Development - Core Functionality Working ⚠️
+- 7/17 core mechanisms tracked and operational (M1, M3, M4, M7, M8, M11, M17)
+- Real LLM integration required (requires `OPENROUTER_API_KEY`)
 - Complete pipeline: Natural Language → Simulation → Query → Report → Export
-- **Note**: Mock mode disabled - system requires real LLM for production workflows
-- **Validation**: See [VALIDATION_REPORT.md](VALIDATION_REPORT.md) for comprehensive validation evidence
+- **Note**: Mock mode disabled - system requires real LLM for all workflows
+- **Current Focus**: Expanding mechanism coverage from 7/17 to 17/17 (Phase 6-7)
+- **See**: [MECHANISM_COVERAGE_STRATEGY.md](MECHANISM_COVERAGE_STRATEGY.md) for detailed status
 
 ---
 
@@ -212,49 +212,40 @@ exporter.export_batch(
 ### Run Tests
 
 ```bash
-# All tests (462 tests collected)
+# Run all mechanism tests
 pytest -v
 
-# E2E tests (17 tests - require real LLM)
-pytest test_e2e_autopilot.py -v --real-llm
+# Specific mechanism tests
+pytest test_m5_query_resolution.py -v              # M5: Query Resolution (16/17 passing)
+pytest test_m9_on_demand_generation.py -v          # M9: On-Demand Generation (17/23 passing)
+pytest test_branching_integration.py -v            # M12: Counterfactual Branching
+pytest test_phase3_dialog_multi_entity.py -v       # M13: Multi-Entity Synthesis
 
-# Validation workflow tests (4 critical workflows)
-pytest test_e2e_autopilot.py::TestE2EValidationWorkflows -v --real-llm
-
-# Unit/integration tests (run without API key)
-pytest -m "not llm" -v
+# Run mechanism test runner
+python run_all_mechanism_tests.py
 
 # Run with real LLM (requires OPENROUTER_API_KEY)
 export OPENROUTER_API_KEY=your_key
-pytest -m llm -v
-
-# Complete pipeline integration
-pytest test_e2e_complete_pipeline.py -v -s
+pytest -v
 ```
 
 ### Test Coverage
 
-**Total Tests**: 462 collected
+**Current Mechanism Test Status**:
 
-| Test Type | Count | Notes |
-|-----------|-------|-------|
-| E2E (full stack) | 17 | Require real LLM (13 original + 4 validation workflows) |
-| Integration | ~200 | Multi-component tests |
-| Unit | ~245 | Isolated components |
-| **TOTAL** | **462** | See [TEST_CHECKLIST.md](TEST_CHECKLIST.md) for details |
+| Mechanism | Test Suite | Status |
+|-----------|------------|--------|
+| **M5** | Query Resolution | 16/17 (94.1%) ✅ |
+| **M9** | On-Demand Generation | 17/23 (73.9%) ⚠️ |
+| **M12** | Counterfactual Branching | 1/2 (50%) ⚠️ |
+| **M13** | Multi-Entity Synthesis | 3/11 (27.3%) ⚠️ |
 
 **Test Markers**:
-- `@pytest.mark.e2e` - End-to-end workflows
-- `@pytest.mark.llm` - Require real LLM API
-- `@pytest.mark.validation` - Critical validation workflow tests
+- `@pytest.mark.integration` - Multi-component tests
 - `@pytest.mark.slow` - Long-running tests
 - `@pytest.mark.unit` - Fast isolated tests
 
-**Validation Workflows** (see [VALIDATION_REPORT.md](VALIDATION_REPORT.md)):
-1. Timepoint AI modeling (orchestrator → LLM → scene spec)
-2. E2E test rig with real LLM
-3. Data generation + Oxen storage
-4. Fine-tuning data quality validation
+**Mechanism Coverage**: 7/17 (41.2%) - See [MECHANISM_COVERAGE_STRATEGY.md](MECHANISM_COVERAGE_STRATEGY.md) for details
 
 ---
 
@@ -289,9 +280,8 @@ python run_vertical_finetune.py
 ## Documentation
 
 - **README.md** (this file) - Quick start and overview
+- **MECHANISM_COVERAGE_STRATEGY.md** - Current development status, mechanism tracking, and test results
 - **MECHANICS.md** - Technical architecture and 17 core mechanisms
-- **VALIDATION_REPORT.md** - Comprehensive validation evidence
-- **TEST_CHECKLIST.md** - Test inventory and validation checklist
 
 ---
 
@@ -378,4 +368,4 @@ For questions or issues, please open a GitHub issue.
 
 ---
 
-**Validated and Production Ready** ✅ | **462 Tests (17 E2E)** ✅ | **Real LLM Integration** ✅ | See **VALIDATION_REPORT.md** for evidence
+**Active Development** ⚠️ | **7/17 Mechanisms Tracked** | **Real LLM Integration** ✅ | See **MECHANISM_COVERAGE_STRATEGY.md** for status

@@ -328,19 +328,40 @@ Return only valid JSON, no other text."""
             )
             self.store.save_query_history(query_history)
 
-        # Check cache first
+        # Phase 7.5: Detect entity gaps in query text BEFORE cache check
+        # This ensures on-demand generation can trigger even with caching enabled
+        existing_entities = set(self._get_all_entity_names())
+        missing_entity = self.detect_entity_gap(query_text, existing_entities)
+        has_missing_entity = missing_entity is not None
+
+        # Phase 7.5: Skip cache for queries about missing entities (to allow on-demand generation)
+        entity_exists = True
+        if query_intent.target_entity:
+            entity = self.store.get_entity(query_intent.target_entity)
+            entity_exists = entity is not None
+
+            # Phase 7.5 Task 4c: Increment query_count BEFORE cache check
+            # This ensures query_count increments even on cache hits
+            if entity_exists:
+                entity.query_count += 1
+                self.store.save_entity(entity)
+                self.resolution_engine.record_query(entity.entity_id)
+
+        # Check cache first (but only if no missing entities detected)
         cache_key = self._get_query_cache_key(query_text, query_intent)
-        cached_response = self._get_cached_response(cache_key)
-        if cached_response:
-            print(f"  📋 Cache hit for query (TTL: {CACHE_TTL})")
-            return cached_response
+        if entity_exists and not has_missing_entity:
+            cached_response = self._get_cached_response(cache_key)
+            if cached_response:
+                print(f"  📋 Cache hit for query (TTL: {CACHE_TTL})")
+                return cached_response
 
         # Generate response
         response = self.synthesize_response(query_intent, query_text)
 
-        # Cache the response
-        self._cache_response(cache_key, response)
-        print(f"  💾 Response cached (key: {cache_key[:8]}...)")
+        # Cache the response (only if entity existed at start and no gaps)
+        if entity_exists and not has_missing_entity:
+            self._cache_response(cache_key, response)
+            print(f"  💾 Response cached (key: {cache_key[:8]}...)")
 
         return response
 
@@ -374,7 +395,8 @@ Return only valid JSON, no other text."""
             existing_entities = set(self._get_all_entity_names())
             missing_entity = self.detect_entity_gap(query_text, existing_entities)
 
-            if missing_entity and missing_entity == query_intent.target_entity:
+            # Phase 7.5: Generate ANY missing entity detected, not just target_entity
+            if missing_entity:
                 # Try to generate the entity on demand
                 # Find an appropriate timepoint for context
                 timepoint = None
@@ -387,10 +409,12 @@ Return only valid JSON, no other text."""
                         timepoint = max(timepoints, key=lambda tp: tp.timestamp)
 
                 if timepoint:
-                    print(f"  🔍 Entity {query_intent.target_entity} not found, generating on demand...")
-                    entity = self.generate_entity_on_demand(query_intent.target_entity, timepoint)
+                    print(f"  🔍 Entity {missing_entity} not found, generating on demand...")
+                    entity = self.generate_entity_on_demand(missing_entity, timepoint)
+                    # Update query_intent to reflect the generated entity
+                    query_intent.target_entity = missing_entity
                 else:
-                    return f"I don't have information about {query_intent.target_entity} and cannot determine appropriate context for generation."
+                    return f"I don't have information about {missing_entity} and cannot determine appropriate context for generation."
             else:
                 return f"I don't have information about {query_intent.target_entity}."
 
@@ -403,10 +427,8 @@ Return only valid JSON, no other text."""
             if success:
                 print(f"  Elevated {entity.entity_id} resolution to {required_resolution.value}")
 
-        # Record this query for future resolution decisions and progressive training
-        self.resolution_engine.record_query(entity.entity_id)
-        entity.query_count += 1  # Increment query count for progressive training
-        self.store.save_entity(entity)  # Save the updated query count
+        # Phase 7.5 Task 4c: query_count increment moved to query() method
+        # This ensures counting happens even on cache hits
 
         # M5: Save query history to database for lazy resolution tracking
         from schemas import QueryHistory
@@ -1214,18 +1236,29 @@ Return only valid JSON, no other text."""
         return missing.pop() if missing else None
 
     @track_mechanism("M9", "on_demand_entity_generation")
-    def generate_entity_on_demand(self, entity_id: str, timepoint: Timepoint) -> Entity:
+    def generate_entity_on_demand(self, entity_id: str, timepoint: Optional[Timepoint]) -> Entity:
         """Create plausible entity matching query context dynamically"""
-        context = {
-            "timepoint": timepoint.event_description,
-            "entities_present": timepoint.entities_present,
-            "role": self._infer_role_from_context(entity_id, timepoint)
-        }
+        # Phase 7.5: Handle None timepoint case
+        if timepoint is None:
+            context = {
+                "timepoint": "Unknown historical event",
+                "entities_present": [],
+                "role": "historical figure"
+            }
+        else:
+            context = {
+                "timepoint": timepoint.event_description,
+                "entities_present": timepoint.entities_present,
+                "role": self._infer_role_from_context(entity_id, timepoint)
+            }
 
         # Use LLM to generate entity data
+        # Phase 7.5: Handle None timepoint for timestamp
+        timestamp_str = timepoint.timestamp.strftime('%Y-%m-%d %H:%M') if timepoint else "Unknown date"
+
         prompt = f"""Generate a historical entity for the following context:
 
-Timepoint: {timepoint.timestamp.strftime('%Y-%m-%d %H:%M')}
+Timepoint: {timestamp_str}
 Event: {context['timepoint']}
 Entities Present: {', '.join(context['entities_present'])}
 Inferred Role: {context['role']}
@@ -1255,6 +1288,7 @@ Return only valid JSON."""
             entity_data = json.loads(strip_markdown_json(content))
 
             # Create entity with generated data
+            # Phase 7.5: Use event-specific inferred role, not LLM's generic job title
             entity = Entity(
                 entity_id=entity_id,
                 entity_type="person",
@@ -1262,7 +1296,8 @@ Return only valid JSON."""
                 entity_metadata={
                     "name": entity_data.get("name", entity_id.replace("_", " ").title()),
                     "age": entity_data.get("age", 35),
-                    "role": entity_data.get("role", context["role"]),
+                    "role": context["role"],  # Always use context-inferred role (event-specific)
+                    "job_title": entity_data.get("role", "Unknown"),  # Store LLM's job title separately
                     "background": entity_data.get("background", "Generated historical figure"),
                     "personality": entity_data.get("personality", ["unknown"]),
                     "motivations": entity_data.get("motivations", "Attend event"),
@@ -1271,9 +1306,10 @@ Return only valid JSON."""
                 }
             )
 
-            # Set temporal span
-            entity.temporal_span_start = timepoint.timestamp
-            entity.temporal_span_end = timepoint.timestamp
+            # Set temporal span (Phase 7.5: Handle None timepoint)
+            if timepoint:
+                entity.temporal_span_start = timepoint.timestamp
+                entity.temporal_span_end = timepoint.timestamp
 
             # Initialize physical and cognitive tensors
             from schemas import PhysicalTensor, CognitiveTensor
@@ -1286,6 +1322,12 @@ Return only valid JSON."""
                 knowledge_state=entity_data.get("knowledge_state", [])
             )
 
+            # Generate TTM tensor for entity (Phase 7)
+            from tensors import generate_ttm_tensor
+            tensor_json = generate_ttm_tensor(entity)
+            if tensor_json:
+                entity.tensor = tensor_json
+
             # Save to database
             self.store.save_entity(entity)
 
@@ -1297,35 +1339,41 @@ Return only valid JSON."""
 
         except Exception as e:
             print(f"Failed to generate entity {entity_id}: {e}")
-            # Fallback: create minimal entity
+            # Fallback: create minimal entity (Phase 7.5: Handle None timepoint)
+            knowledge_desc = f"Present at {timepoint.event_description}" if timepoint else "Historical figure"
             entity = Entity(
                 entity_id=entity_id,
                 entity_type="person",
                 resolution_level=ResolutionLevel.TENSOR_ONLY,
                 entity_metadata={
                     "role": context["role"],
-                    "knowledge_state": [f"Present at {timepoint.event_description}"]
+                    "knowledge_state": [knowledge_desc]
                 }
             )
-            entity.temporal_span_start = timepoint.timestamp
-            entity.temporal_span_end = timepoint.timestamp
+            if timepoint:
+                entity.temporal_span_start = timepoint.timestamp
+                entity.temporal_span_end = timepoint.timestamp
             self.store.save_entity(entity)
             return entity
 
     def _infer_role_from_context(self, entity_id: str, timepoint: Timepoint) -> str:
         """Infer likely role for an entity based on timepoint context"""
+        # Phase 7.5: Prioritize event context for ALL entities, not just attendees
         event_lower = timepoint.event_description.lower()
 
-        # Check for numbered attendees
+        # Check event context FIRST for specific roles
+        if "inauguration" in event_lower:
+            return "ceremony attendee" if entity_id.startswith("attendee_") else "inauguration participant"
+        elif "meeting" in event_lower or "conference" in event_lower:
+            return "meeting participant"
+        elif "dinner" in event_lower or "banquet" in event_lower:
+            return "dinner guest" if entity_id.startswith("attendee_") else "banquet attendee"
+        elif "ceremony" in event_lower:
+            return "ceremony participant"
+
+        # Check for numbered attendees (generic event attendee)
         if entity_id.startswith("attendee_"):
-            if "inauguration" in event_lower:
-                return "ceremony attendee"
-            elif "meeting" in event_lower or "conference" in event_lower:
-                return "meeting participant"
-            elif "dinner" in event_lower or "banquet" in event_lower:
-                return "dinner guest"
-            else:
-                return "event attendee"
+            return "event attendee"
 
         # Default fallback
         return "historical figure"
