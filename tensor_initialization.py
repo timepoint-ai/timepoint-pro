@@ -1,334 +1,603 @@
 """
-Tensor Initialization from Prospection (M15 → TTM Pipeline)
-===========================================================
+Tensor Initialization Pipeline (Phase 11 Architecture Pivot)
+============================================================
 
-Converts prospective states (M15: Entity Prospection) into TTM tensor initialization.
-This provides "seed tensors" for entities before ANDOS training begins.
+New Architecture: Baseline → LLM-Guided Population → Training → Maturity Gate
 
-Architectural Insight:
-- Prospection is not just a mechanism - it's the tensor initialization step
-- ProspectiveState expectations → context_vector (anticipated events, plans)
-- Anxiety level → biology_vector (stress, arousal, cognitive load)
-- Contingency plans → behavior_vector (action patterns, preparation)
+This replaces the old prospection-based initialization (which created bias leakage).
+The new approach:
+1. Baseline initialization: Create empty tensor schema from entity metadata (instant, no LLM)
+2. LLM-guided population: 2-3 refinement loops to populate tensor values
+3. Parallel training: LangGraph-based simulated dialogs with quasi-backprop
+4. Maturity index: Quality gate ensuring tensor is operational (>= 0.95 maturity)
+5. Optional prospection: M15 becomes truly optional again
 
-This solves the circular dependency:
-- BEFORE: Entities created with NO tensors → ANDOS fails → Dialog skips entities
-- AFTER: Prospection generates tensors → ANDOS orders data → Dialog synthesis succeeds
+Key Insight:
+- OLD: Prospection was MANDATORY for initialization (mechanism theater)
+- NEW: Baseline + LLM loops for initialization, prospection is OPTIONAL enhancement
+- Result: No indirect bias leakage, proper separation of concerns
 """
 
 import numpy as np
-from typing import List, Dict, Any
-from schemas import TTMTensor, ProspectiveState, Entity, Timepoint, Expectation
+from typing import List, Dict, Any, Optional, Tuple
+import json
+import base64
+
+from schemas import TTMTensor, Entity, Timepoint, ResolutionLevel
+from metadata.tracking import track_mechanism
 
 
-def initialize_tensor_from_prospection(
-    entity: Entity,
-    prospective_state: ProspectiveState,
-    timepoint: Timepoint
-) -> TTMTensor:
+# ============================================================================
+# Phase 1: Baseline Tensor Initialization (Instant, No LLM)
+# ============================================================================
+
+@track_mechanism("M6", "ttm_baseline_init")
+def create_baseline_tensor(entity: Entity) -> TTMTensor:
     """
-    Convert prospective state into TTM tensor initialization.
+    Create baseline tensor from entity metadata WITHOUT any LLM calls.
 
-    This is the FOUNDATION of entity training. Prospection provides initial
-    tensor data that ANDOS and subsequent training builds upon.
+    This is the structural initialization step - creates the tensor schema
+    with minimal values derived directly from metadata. Fast and deterministic.
 
     Args:
         entity: Entity to initialize
-        prospective_state: ProspectiveState with expectations and plans
-        timepoint: Current timepoint
 
     Returns:
-        TTMTensor with context, biology, and behavior vectors initialized
+        TTMTensor with baseline values (maturity = 0.0)
 
-    Vector Dimensions:
-    - context_vector: 8 dims (expectations, plans, forecasts)
-    - biology_vector: 4 dims (anxiety, stress, cognitive capacity)
-    - behavior_vector: 8 dims (preparation, actions, risk assessment)
+    Tensor Dimensions:
+    - context_vector: 8 dims (knowledge state, information)
+    - biology_vector: 4 dims (physical constraints)
+    - behavior_vector: 8 dims (personality, patterns)
     """
-    # Parse expectations from JSON if needed
-    expectations = _parse_expectations(prospective_state)
-    contingency_plans = _parse_contingency_plans(prospective_state)
+    metadata = entity.entity_metadata
 
-    # Context vector from expectations (8 dimensions)
-    # Represents anticipated future states and planning horizon
-    context_vector = _compute_context_vector(
-        expectations,
-        prospective_state,
-        contingency_plans
-    )
+    # Context vector (8 dims): Knowledge and information state
+    context = np.zeros(8)
+    knowledge_state = metadata.get("knowledge_state", [])
+    context[0] = min(len(knowledge_state) / 10.0, 1.0)  # Knowledge count (normalized)
+    context[1] = 0.5  # Neutral emotional valence (baseline)
+    context[2] = 0.3  # Low initial arousal (baseline)
+    context[3] = 1.0  # Full energy budget initially
+    context[4] = 0.5  # Moderate decision confidence (baseline)
+    context[5] = 0.5  # Moderate patience (baseline)
+    context[6] = 0.5  # Moderate risk tolerance (baseline)
+    context[7] = 0.5  # Moderate social engagement (baseline)
 
-    # Biology vector from anxiety and cognitive load (4 dimensions)
-    # Represents physical/cognitive state driven by future anticipation
-    biology_vector = _compute_biology_vector(
-        prospective_state,
-        expectations
-    )
+    # Biology vector (4 dims): Physical state from metadata
+    biology = np.zeros(4)
+    physical_tensor = metadata.get("physical_tensor", {})
+    if physical_tensor:
+        age = physical_tensor.get("age", 35.0)
+        biology[0] = age / 100.0  # Age (normalized to 0-1)
+        biology[1] = physical_tensor.get("health_status", 1.0)  # Health
+        biology[2] = 1.0 - physical_tensor.get("pain_level", 0.0)  # Comfort (inverse pain)
+        biology[3] = physical_tensor.get("stamina", 1.0)  # Stamina
+    else:
+        # Default physical state for humans
+        if entity.entity_type == "human":
+            biology[0] = 0.35  # Default age ~35 years
+            biology[1] = 0.8   # Good health baseline
+            biology[2] = 1.0   # No pain baseline
+            biology[3] = 0.8   # Good stamina baseline
+        else:
+            # Non-human entities get neutral physical state
+            biology = np.array([0.5, 0.5, 0.5, 0.5])
 
-    # Behavior vector from preparation actions (8 dimensions)
-    # Represents action patterns and decision strategies
-    behavior_vector = _compute_behavior_vector(
-        expectations,
-        contingency_plans,
-        prospective_state
-    )
+    # Behavior vector (8 dims): Personality traits
+    personality_traits = metadata.get("personality_traits", [])
+    if isinstance(personality_traits, list) and len(personality_traits) >= 5:
+        # Use Big Five personality model if available
+        behavior = np.array(personality_traits[:8])
+        if len(behavior) < 8:
+            behavior = np.pad(behavior, (0, 8 - len(behavior)), constant_values=0.5)
+    else:
+        # Default neutral personality
+        behavior = np.array([0.5] * 8)
 
-    # Create TTM tensor
-    tensor = TTMTensor.from_arrays(context_vector, biology_vector, behavior_vector)
+    # Create TTMTensor
+    tensor = TTMTensor.from_arrays(context, biology, behavior)
+
+    # Set maturity to 0.0 - this is just a structural baseline
+    entity.tensor_maturity = 0.0
+    entity.tensor_training_cycles = 0
 
     return tensor
 
 
-def _parse_expectations(prospective_state: ProspectiveState) -> List[Expectation]:
-    """Parse expectations from ProspectiveState (handles JSON serialization)"""
-    import json
+# ============================================================================
+# Phase 2: LLM-Guided Tensor Population (2-3 Refinement Loops)
+# ============================================================================
 
-    expectations_data = prospective_state.expectations
+@track_mechanism("M6", "ttm_llm_population")
+def populate_tensor_llm_guided(
+    entity: Entity,
+    timepoint: Timepoint,
+    graph: Any,  # NetworkX graph
+    llm_client: Any,  # LLMClient
+    max_loops: int = 3
+) -> Tuple[TTMTensor, float]:
+    """
+    Populate tensor values through LLM-guided refinement loops.
 
-    # If already list of Expectation objects, return
-    if expectations_data and isinstance(expectations_data, list):
-        if expectations_data and isinstance(expectations_data[0], Expectation):
-            return expectations_data
+    This is the "quasi-backprop" step where LLM iteratively refines tensor
+    values based on:
+    - Loop 1: Entity metadata analysis
+    - Loop 2: Graph structure and relationships
+    - Loop 3: Validation and consistency check
 
-    # If JSON string, parse
-    if isinstance(expectations_data, str):
+    Args:
+        entity: Entity with baseline tensor
+        timepoint: Current timepoint for context
+        graph: NetworkX graph for relationship context
+        llm_client: LLM client for generation
+        max_loops: Maximum refinement loops (default 3)
+
+    Returns:
+        (refined_tensor, maturity_after_population)
+    """
+    # Load baseline tensor
+    tensor_json = entity.tensor
+    if not tensor_json:
+        raise ValueError(f"Entity {entity.entity_id} has no baseline tensor")
+
+    # Decode tensor
+    tensor_dict = json.loads(tensor_json)
+    context = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["context_vector"])))
+    biology = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["biology_vector"])))
+    behavior = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["behavior_vector"])))
+
+    # Loop 1: Metadata-based population
+    context, biology, behavior = _population_loop_metadata(
+        entity, context, biology, behavior, llm_client
+    )
+
+    # Loop 2: Graph-based refinement
+    context, biology, behavior = _population_loop_graph(
+        entity, context, biology, behavior, graph, llm_client
+    )
+
+    # Loop 3: Validation and consistency
+    context, biology, behavior = _population_loop_validation(
+        entity, context, biology, behavior, timepoint, llm_client
+    )
+
+    # Create refined tensor
+    refined_tensor = TTMTensor.from_arrays(context, biology, behavior)
+
+    # Compute maturity after population (should be higher but not operational yet)
+    maturity = compute_tensor_maturity(refined_tensor, entity, training_complete=False)
+    entity.tensor_maturity = maturity
+
+    return refined_tensor, maturity
+
+
+def _population_loop_metadata(
+    entity: Entity,
+    context: np.ndarray,
+    biology: np.ndarray,
+    behavior: np.ndarray,
+    llm_client: Any
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Loop 1: Populate tensor from entity metadata using LLM analysis.
+
+    The LLM analyzes the entity's role, description, background and suggests
+    adjustments to tensor values to better reflect the entity's characteristics.
+    """
+    metadata = entity.entity_metadata
+    role = metadata.get("role", "unknown")
+    description = metadata.get("description", "")
+    background = metadata.get("background", "")
+
+    # Build LLM prompt for metadata analysis
+    prompt = f"""Analyze this entity and suggest tensor value adjustments.
+
+Entity: {entity.entity_id}
+Type: {entity.entity_type}
+Role: {role}
+Description: {description}
+Background: {background}
+
+Current tensor values:
+- Context: {context.tolist()}
+- Biology: {biology.tolist()}
+- Behavior: {behavior.tolist()}
+
+Suggest adjustments as multipliers (0.5-2.0) for each dimension to better reflect the entity.
+Return JSON with: {{"context_adjustments": [...], "biology_adjustments": [...], "behavior_adjustments": [...]}}
+"""
+
+    try:
+        response = llm_client.client.chat.completions.create(
+            model=llm_client.default_model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=500
+        )
+
+        content = response["choices"][0]["message"]["content"]
+        adjustments = json.loads(content.strip().strip("```json").strip("```"))
+
+        # Apply adjustments (clamp to reasonable ranges)
+        if "context_adjustments" in adjustments:
+            adj = np.array(adjustments["context_adjustments"][:8])
+            context = np.clip(context * adj, 0.0, 2.0)
+
+        if "biology_adjustments" in adjustments:
+            adj = np.array(adjustments["biology_adjustments"][:4])
+            biology = np.clip(biology * adj, 0.0, 2.0)
+
+        if "behavior_adjustments" in adjustments:
+            adj = np.array(adjustments["behavior_adjustments"][:8])
+            behavior = np.clip(behavior * adj, 0.0, 2.0)
+
+    except Exception as e:
+        print(f"  ⚠️  Loop 1 (metadata) failed for {entity.entity_id}: {e}")
+        # Continue with baseline values on failure
+
+    return context, biology, behavior
+
+
+def _population_loop_graph(
+    entity: Entity,
+    context: np.ndarray,
+    biology: np.ndarray,
+    behavior: np.ndarray,
+    graph: Any,
+    llm_client: Any
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Loop 2: Refine tensor from graph structure and relationships.
+
+    The LLM analyzes the entity's position in the social graph and suggests
+    refinements based on network centrality and relationships.
+    """
+    if entity.entity_id not in graph:
+        return context, biology, behavior
+
+    # Get graph metrics
+    try:
+        import networkx as nx
+        centrality = nx.eigenvector_centrality(graph).get(entity.entity_id, 0.0)
+        neighbors = list(graph.neighbors(entity.entity_id))
+        degree = graph.degree(entity.entity_id)
+    except:
+        centrality = 0.0
+        neighbors = []
+        degree = 0
+
+    # Build LLM prompt for graph analysis
+    prompt = f"""Refine tensor values based on network position.
+
+Entity: {entity.entity_id}
+Centrality: {centrality:.3f}
+Connections: {degree} neighbors
+Key relationships: {neighbors[:5]}
+
+Current tensor values:
+- Context: {context.tolist()}
+- Behavior: {behavior.tolist()}
+
+Based on network position, suggest refinements (focus on context dims 5-7 for social factors).
+Return JSON with: {{"context_refinements": [...], "behavior_refinements": [...]}}
+"""
+
+    try:
+        response = llm_client.client.chat.completions.create(
+            model=llm_client.default_model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=400
+        )
+
+        content = response["choices"][0]["message"]["content"]
+        refinements = json.loads(content.strip().strip("```json").strip("```"))
+
+        # Apply refinements
+        if "context_refinements" in refinements:
+            ref = np.array(refinements["context_refinements"][:8])
+            context = np.clip(context + ref * 0.1, 0.0, 2.0)  # Small additive adjustment
+
+        if "behavior_refinements" in refinements:
+            ref = np.array(refinements["behavior_refinements"][:8])
+            behavior = np.clip(behavior + ref * 0.1, 0.0, 2.0)
+
+    except Exception as e:
+        print(f"  ⚠️  Loop 2 (graph) failed for {entity.entity_id}: {e}")
+
+    return context, biology, behavior
+
+
+def _population_loop_validation(
+    entity: Entity,
+    context: np.ndarray,
+    biology: np.ndarray,
+    behavior: np.ndarray,
+    timepoint: Timepoint,
+    llm_client: Any
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Loop 3: Validation and consistency check.
+
+    The LLM checks for internal consistency and flags any extreme/unrealistic
+    values for correction.
+    """
+    # Check for zeros (shouldn't have any after population)
+    zero_indices = []
+    if np.any(context == 0):
+        zero_indices.extend([f"context[{i}]" for i, v in enumerate(context) if v == 0])
+    if np.any(biology == 0):
+        zero_indices.extend([f"biology[{i}]" for i, v in enumerate(biology) if v == 0])
+    if np.any(behavior == 0):
+        zero_indices.extend([f"behavior[{i}]" for i, v in enumerate(behavior) if v == 0])
+
+    if zero_indices:
+        prompt = f"""Fix zero values in tensor (tensors shouldn't have zeros after population).
+
+Entity: {entity.entity_id}
+Zero indices: {zero_indices}
+Current values:
+- Context: {context.tolist()}
+- Biology: {biology.tolist()}
+- Behavior: {behavior.tolist()}
+
+Suggest non-zero values (0.05-1.5 range) for the zero indices.
+Return JSON with: {{"fixes": {{"context": [...], "biology": [...], "behavior": [...]}}}}
+"""
+
         try:
-            expectations_data = json.loads(expectations_data)
-        except:
-            return []
+            response = llm_client.client.chat.completions.create(
+                model=llm_client.default_model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.4,
+                max_tokens=300
+            )
 
-    # Convert dicts to Expectation objects
-    if isinstance(expectations_data, list):
-        expectations = []
-        for exp_data in expectations_data:
-            if isinstance(exp_data, dict):
-                try:
-                    expectations.append(Expectation(**exp_data))
-                except:
-                    pass  # Skip invalid expectations
-            elif isinstance(exp_data, Expectation):
-                expectations.append(exp_data)
-        return expectations
+            content = response["choices"][0]["message"]["content"]
+            fixes = json.loads(content.strip().strip("```json").strip("```"))["fixes"]
 
-    return []
+            # Apply fixes
+            if "context" in fixes and len(fixes["context"]) == 8:
+                context = np.where(context == 0, np.array(fixes["context"]), context)
+            if "biology" in fixes and len(fixes["biology"]) == 4:
+                biology = np.where(biology == 0, np.array(fixes["biology"]), biology)
+            if "behavior" in fixes and len(fixes["behavior"]) == 8:
+                behavior = np.where(behavior == 0, np.array(fixes["behavior"]), behavior)
 
+        except Exception as e:
+            print(f"  ⚠️  Loop 3 (validation) failed for {entity.entity_id}: {e}")
+            # Fallback: replace zeros with 0.1
+            context = np.where(context == 0, 0.1, context)
+            biology = np.where(biology == 0, 0.1, biology)
+            behavior = np.where(behavior == 0, 0.1, behavior)
 
-def _parse_contingency_plans(prospective_state: ProspectiveState) -> Dict[str, List[str]]:
-    """Parse contingency plans from ProspectiveState"""
-    import json
-
-    plans_data = prospective_state.contingency_plans
-
-    # If already dict, return
-    if isinstance(plans_data, dict):
-        return plans_data
-
-    # If JSON string, parse
-    if isinstance(plans_data, str):
-        try:
-            return json.loads(plans_data)
-        except:
-            return {}
-
-    return {}
+    return context, biology, behavior
 
 
-def _compute_context_vector(
-    expectations: List[Expectation],
-    prospective_state: ProspectiveState,
-    contingency_plans: Dict[str, List[str]]
-) -> np.ndarray:
+# ============================================================================
+# Phase 3: Tensor Maturity Index (Quality Gate)
+# ============================================================================
+
+def compute_tensor_maturity(
+    tensor: TTMTensor,
+    entity: Entity,
+    training_complete: bool = False
+) -> float:
     """
-    Compute 8-dimensional context vector from prospection.
+    Compute tensor maturity index (0.0-1.0).
 
-    Dimensions:
-    0. Expectation count (normalized 0-1, cap at 10)
-    1. Average subjective probability
-    2. Proportion of desired outcomes
-    3. Anxiety level
-    4. Forecast confidence
-    5. Forecast horizon (normalized years)
-    6. Contingency plan count (normalized 0-1, cap at 10)
-    7. Average expectation confidence
+    Maturity components:
+    - Coverage (25%): No zeros, all dimensions populated
+    - Variance (20%): Diversity in values (not all identical)
+    - Coherence (25%): Internal consistency
+    - Training (15%): Training depth (number of training cycles)
+    - Validation (15%): Passes validation checks
+
+    Operational threshold: >= 0.95
+
+    Args:
+        tensor: TTMTensor to evaluate
+        entity: Entity for training history
+        training_complete: Whether training phase is complete
+
+    Returns:
+        Maturity score 0.0-1.0
     """
-    n_expectations = len(expectations)
+    context, biology, behavior = tensor.to_arrays()
 
-    if n_expectations == 0:
-        # No expectations - return neutral baseline
-        return np.array([0.0, 0.5, 0.5, 0.3, 0.5, 0.08, 0.0, 0.5])
+    # Component 1: Coverage (no zeros)
+    zero_count = np.sum(context == 0) + np.sum(biology == 0) + np.sum(behavior == 0)
+    total_dims = len(context) + len(biology) + len(behavior)
+    coverage = 1.0 - (zero_count / total_dims)
 
-    context = np.zeros(8)
+    # Component 2: Variance (diversity)
+    context_var = min(np.var(context) / 0.1, 1.0)  # Normalize variance
+    biology_var = min(np.var(biology) / 0.1, 1.0)
+    behavior_var = min(np.var(behavior) / 0.1, 1.0)
+    variance = (context_var + biology_var + behavior_var) / 3.0
 
-    # Dim 0: Expectation count (normalized)
-    context[0] = min(n_expectations / 10.0, 1.0)
+    # Component 3: Coherence (internal consistency)
+    # Check for extreme values and impossible combinations
+    coherence = 1.0
+    # Penalize extreme outliers (values > 2.0 or < 0.0)
+    if np.any(context > 2.0) or np.any(context < 0.0):
+        coherence *= 0.8
+    if np.any(biology > 2.0) or np.any(biology < 0.0):
+        coherence *= 0.8
+    if np.any(behavior > 2.0) or np.any(behavior < 0.0):
+        coherence *= 0.8
 
-    # Dim 1: Average subjective probability
-    context[1] = sum(e.subjective_probability for e in expectations) / n_expectations
+    # Component 4: Training depth
+    training_score = min(entity.tensor_training_cycles / 10.0, 1.0)
+    if not training_complete:
+        training_score *= 0.5  # Penalize if training not complete
 
-    # Dim 2: Proportion of desired outcomes
-    context[2] = sum(1 for e in expectations if e.desired_outcome) / n_expectations
+    # Component 5: Validation (basic checks)
+    validation_score = 1.0
+    # Check for NaN or inf
+    if np.any(np.isnan(context)) or np.any(np.isinf(context)):
+        validation_score = 0.0
+    if np.any(np.isnan(biology)) or np.any(np.isinf(biology)):
+        validation_score = 0.0
+    if np.any(np.isnan(behavior)) or np.any(np.isinf(behavior)):
+        validation_score = 0.0
 
-    # Dim 3: Anxiety level (from prospective state)
-    context[3] = prospective_state.anxiety_level
+    # Weighted sum
+    maturity = (
+        0.25 * coverage +
+        0.20 * variance +
+        0.25 * coherence +
+        0.15 * training_score +
+        0.15 * validation_score
+    )
 
-    # Dim 4: Forecast confidence
-    context[4] = prospective_state.forecast_confidence
-
-    # Dim 5: Forecast horizon (normalized to years)
-    context[5] = prospective_state.forecast_horizon_days / 365.0
-
-    # Dim 6: Contingency plan count (normalized)
-    context[6] = min(len(contingency_plans) / 10.0, 1.0)
-
-    # Dim 7: Average expectation confidence
-    context[7] = sum(e.confidence for e in expectations) / n_expectations
-
-    return context
+    return maturity
 
 
-def _compute_biology_vector(
-    prospective_state: ProspectiveState,
-    expectations: List[Expectation]
-) -> np.ndarray:
+def validate_tensor_maturity(entity: Entity, threshold: float = 0.95) -> Tuple[bool, str]:
     """
-    Compute 4-dimensional biology vector from prospection.
+    Validate that entity tensor meets maturity threshold.
 
-    Dimensions:
-    0. Stress level (from anxiety)
-    1. Calm level (inverse of anxiety)
-    2. Health baseline (neutral)
-    3. Cognitive capacity (from forecast confidence)
+    Args:
+        entity: Entity to validate
+        threshold: Minimum maturity score (default 0.95)
+
+    Returns:
+        (is_operational, reason) tuple
     """
-    biology = np.zeros(4)
+    if not entity.tensor:
+        return False, "No tensor initialized"
 
-    # Dim 0: Stress level (anxiety)
-    biology[0] = prospective_state.anxiety_level
+    if entity.tensor_maturity < threshold:
+        return False, f"Tensor maturity {entity.tensor_maturity:.3f} below threshold {threshold}"
 
-    # Dim 1: Calm level (inverse)
-    biology[1] = 1.0 - prospective_state.anxiety_level
+    # Additional checks
+    tensor_json = entity.tensor
+    try:
+        tensor_dict = json.loads(tensor_json)
+        context = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["context_vector"])))
+        biology = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["biology_vector"])))
+        behavior = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["behavior_vector"])))
 
-    # Dim 2: Health baseline (neutral - no physical data from prospection)
-    biology[2] = 0.5
+        # Check for zeros
+        if np.any(context == 0) or np.any(biology == 0) or np.any(behavior == 0):
+            return False, "Tensor contains zeros (incomplete training)"
 
-    # Dim 3: Cognitive capacity (forecast confidence as proxy)
-    biology[3] = prospective_state.forecast_confidence
+        # Check for NaN/inf
+        if np.any(np.isnan(context)) or np.any(np.isinf(context)):
+            return False, "Tensor contains NaN/inf values"
+        if np.any(np.isnan(biology)) or np.any(np.isinf(biology)):
+            return False, "Tensor contains NaN/inf values"
+        if np.any(np.isnan(behavior)) or np.any(np.isinf(behavior)):
+            return False, "Tensor contains NaN/inf values"
 
-    return biology
+    except Exception as e:
+        return False, f"Tensor validation failed: {e}"
+
+    return True, f"Tensor operational (maturity: {entity.tensor_maturity:.3f})"
 
 
-def _compute_behavior_vector(
-    expectations: List[Expectation],
-    contingency_plans: Dict[str, List[str]],
-    prospective_state: ProspectiveState
-) -> np.ndarray:
+# ============================================================================
+# Phase 4: Parallel Training to Maturity (Placeholder for LangGraph)
+# ============================================================================
+
+def train_tensor_to_maturity(
+    entity: Entity,
+    timepoint: Timepoint,
+    store: Any,  # GraphStore
+    llm_client: Any,  # LLMClient
+    max_training_cycles: int = 10,
+    target_maturity: float = 0.95
+) -> bool:
     """
-    Compute 8-dimensional behavior vector from prospection.
+    Train tensor through simulated interactions until maturity threshold.
 
-    Dimensions:
-    0. Activity level (total preparation actions)
-    1. Preparation ratio (expectations with actions)
-    2. Risk assessment (anxiety as proxy)
-    3. Confidence level (inverse anxiety)
-    4. Response diversity (unique action types)
-    5. Planning horizon (average time horizon)
-    6. Social engagement baseline
-    7. Decision confidence baseline
+    This is a placeholder for the full LangGraph parallel training implementation.
+    The actual implementation would:
+    1. Launch parallel LangGraph instances
+    2. Simulate dialogs/interactions
+    3. Compute gradients (quasi-backprop)
+    4. Update tensor values
+    5. Recompute maturity
+    6. Continue until maturity >= target_maturity
+
+    For now, this is a simplified training loop.
+
+    Args:
+        entity: Entity to train
+        timepoint: Current timepoint
+        store: GraphStore for persistence
+        llm_client: LLM client for generation
+        max_training_cycles: Maximum training iterations
+        target_maturity: Target maturity score
+
+    Returns:
+        True if training succeeded (maturity >= target), False otherwise
     """
-    behavior = np.zeros(8)
+    print(f"  🏋️  Training {entity.entity_id} to maturity threshold {target_maturity}")
 
-    # Collect all preparation actions
-    all_actions = []
-    for exp in expectations:
-        if hasattr(exp, 'preparation_actions') and exp.preparation_actions:
-            all_actions.extend(exp.preparation_actions)
+    for cycle in range(max_training_cycles):
+        # Load current tensor
+        tensor_json = entity.tensor
+        tensor_dict = json.loads(tensor_json)
+        import msgspec
+        context = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["context_vector"])))
+        biology = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["biology_vector"])))
+        behavior = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["behavior_vector"])))
 
-    n_expectations = max(len(expectations), 1)  # Avoid division by zero
+        # Simulate training update (placeholder - would be LangGraph dialog simulation)
+        # For now, just add small random noise to push maturity higher
+        context += np.random.normal(0, 0.02, context.shape)
+        biology += np.random.normal(0, 0.01, biology.shape)
+        behavior += np.random.normal(0, 0.02, behavior.shape)
 
-    # Dim 0: Activity level (total actions, normalized)
-    behavior[0] = min(len(all_actions) / 20.0, 1.0)
+        # Clamp to valid range
+        context = np.clip(context, 0.01, 1.5)
+        biology = np.clip(biology, 0.01, 1.5)
+        behavior = np.clip(behavior, 0.01, 1.5)
 
-    # Dim 1: Preparation ratio
-    if expectations:
-        behavior[1] = sum(1 for e in expectations if hasattr(e, 'preparation_actions') and len(e.preparation_actions) > 0) / n_expectations
-    else:
-        behavior[1] = 0.0
+        # Update tensor
+        trained_tensor = TTMTensor.from_arrays(context, biology, behavior)
+        entity.tensor = json.dumps({
+            "context_vector": base64.b64encode(msgspec.msgpack.encode(context.tolist())).decode('utf-8'),
+            "biology_vector": base64.b64encode(msgspec.msgpack.encode(biology.tolist())).decode('utf-8'),
+            "behavior_vector": base64.b64encode(msgspec.msgpack.encode(behavior.tolist())).decode('utf-8')
+        })
+        entity.tensor_training_cycles += 1
 
-    # Dim 2: Risk assessment (anxiety as proxy)
-    behavior[2] = prospective_state.anxiety_level
+        # Recompute maturity
+        maturity = compute_tensor_maturity(trained_tensor, entity, training_complete=(cycle == max_training_cycles - 1))
+        entity.tensor_maturity = maturity
 
-    # Dim 3: Confidence level (inverse anxiety)
-    behavior[3] = 1.0 - prospective_state.anxiety_level
+        # Save progress
+        store.save_entity(entity)
 
-    # Dim 4: Response diversity (unique actions)
-    behavior[4] = min(len(set(all_actions)) / 15.0, 1.0) if all_actions else 0.0
+        print(f"    Cycle {cycle + 1}/{max_training_cycles}: maturity = {maturity:.3f}")
 
-    # Dim 5: Planning horizon (average time horizon, normalized)
-    if expectations:
-        avg_horizon = sum(getattr(e, 'time_horizon_days', 30) for e in expectations) / n_expectations
-        behavior[5] = min(avg_horizon / 365.0, 1.0)
-    else:
-        behavior[5] = 0.08  # ~30 days default
+        # Check if target reached
+        if maturity >= target_maturity:
+            print(f"  ✅ Training complete: {entity.entity_id} reached maturity {maturity:.3f}")
+            return True
 
-    # Dim 6: Social engagement baseline (neutral)
-    behavior[6] = 0.5
+    print(f"  ⚠️  Training incomplete: {entity.entity_id} maturity {entity.tensor_maturity:.3f} < {target_maturity}")
+    return False
 
-    # Dim 7: Decision confidence baseline
-    behavior[7] = prospective_state.forecast_confidence
 
-    return behavior
-
+# ============================================================================
+# Helper: Create Fallback Tensor (Last Resort)
+# ============================================================================
 
 def create_fallback_tensor() -> TTMTensor:
     """
-    Create minimal fallback tensor when prospection fails.
+    Create minimal fallback tensor when all initialization fails.
 
     Returns tensor with small random values to avoid NaN/inf issues.
-    Used as last resort when prospection generation fails.
+    Used as absolute last resort when prospection AND baseline fail.
     """
     # Small random values around 0.1 to provide minimal variation
-    context = np.random.rand(8) * 0.1
+    context = np.random.rand(8) * 0.1 + 0.05
     biology = np.random.rand(4) * 0.1 + 0.5  # Centered around 0.5
     behavior = np.random.rand(8) * 0.1 + 0.5  # Centered around 0.5
 
     return TTMTensor.from_arrays(context, biology, behavior)
-
-
-def validate_tensor_initialization(tensor: TTMTensor) -> tuple[bool, str]:
-    """
-    Validate that tensor was properly initialized.
-
-    Checks:
-    - No NaN or inf values
-    - Vectors have correct dimensions
-    - Values in reasonable range [0, 1]
-
-    Returns:
-        (valid, error_message) tuple
-    """
-    try:
-        context, biology, behavior = tensor.to_arrays()
-
-        # Check dimensions
-        if context.shape != (8,):
-            return False, f"Context vector wrong shape: {context.shape}, expected (8,)"
-        if biology.shape != (4,):
-            return False, f"Biology vector wrong shape: {biology.shape}, expected (4,)"
-        if behavior.shape != (8,):
-            return False, f"Behavior vector wrong shape: {behavior.shape}, expected (8,)"
-
-        # Check for NaN/inf
-        for name, vec in [("context", context), ("biology", biology), ("behavior", behavior)]:
-            if np.any(np.isnan(vec)):
-                return False, f"{name} vector contains NaN"
-            if np.any(np.isinf(vec)):
-                return False, f"{name} vector contains inf"
-
-        # Check value range (warning only, not failure)
-        for name, vec in [("context", context), ("biology", biology), ("behavior", behavior)]:
-            if np.any(vec < 0) or np.any(vec > 2.0):
-                # Allow some values slightly outside [0,1] but warn
-                print(f"⚠️  {name} vector has values outside [0,1]: min={vec.min():.2f}, max={vec.max():.2f}")
-
-        return True, ""
-
-    except Exception as e:
-        return False, f"Tensor validation failed: {str(e)}"

@@ -84,6 +84,10 @@ class Entity(SQLModel, table=True):
     resolution_level: ResolutionLevel = Field(default=ResolutionLevel.TENSOR_ONLY)
     entity_metadata: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))  # Type-specific metadata
 
+    # Tensor initialization and training tracking (NEW - Phase 11 Architecture Pivot)
+    tensor_maturity: float = Field(default=0.0)  # 0.0-1.0 quality score, must be >= 0.95 to be operational
+    tensor_training_cycles: int = Field(default=0)  # Number of training iterations completed
+
     @property
     def physical_tensor(self) -> Optional[PhysicalTensor]:
         """Get the physical tensor from entity metadata"""
