@@ -116,8 +116,8 @@ class FullE2EWorkflowRunner:
                 # Step 2: Generate initial scene
                 scene_result = self._generate_initial_scene(config, run_id)
 
-                # Step 2.5: Synthesize prospection for tensor initialization (NEW - MANDATORY)
-                self._synthesize_prospection(scene_result, run_id)
+                # Step 2.5: Initialize baseline tensors (NEW - Phase 11 Architecture Pivot)
+                self._initialize_baseline_tensors(scene_result, run_id)
 
                 # Step 3: Generate all timepoints
                 all_timepoints = self._generate_all_timepoints(
@@ -239,6 +239,7 @@ class FullE2EWorkflowRunner:
             result["llm_client"] = llm
             result["store"] = store
             result["db_path"] = db_path
+            result["config"] = config  # Store config for prospection triggering
 
             print(f"✓ Initial scene created:")
             print(f"  - Entities: {len(result['entities'])}")
@@ -252,115 +253,94 @@ class FullE2EWorkflowRunner:
 
             return result
 
-    def _synthesize_prospection(
+    def _initialize_baseline_tensors(
         self, scene_result: Dict, run_id: str
     ) -> None:
         """
-        Step 2.5: Synthesize prospection for ALL entities (MANDATORY).
+        Step 2.5: Initialize baseline tensors (NEW - Phase 11 Architecture Pivot).
 
-        This provides tensor initialization before ANDOS ordering.
-        Prospection is no longer optional - it's the foundation of entity training.
+        This replaces prospection-based initialization with baseline + LLM-guided approach:
+        1. Create baseline tensors (instant, no LLM, no bias leakage)
+        2. Set maturity to 0.0
+        3. Mark for LLM-guided population during ANDOS training
 
-        Architectural insight:
-        - Prospection (M15) is not just a mechanism - it's tensor initialization
-        - ProspectiveState → TTM tensor creation
-        - This feeds ANDOS with real data to order
-        - Solves circular dependency: entities need tensors before ANDOS
+        Architectural improvements:
+        - OLD: Prospection was MANDATORY for initialization (mechanism theater)
+        - NEW: Baseline initialization is instant and deterministic
+        - M15 (Prospection) becomes truly OPTIONAL again
+        - No indirect bias leakage through shared LLM context
+        - LLM-guided population happens DURING ANDOS training (per-entity isolation)
         """
-        with self.logfire.span("step:prospection_synthesis"):
-            print("\nStep 2.5: Synthesizing prospection (tensor initialization)...")
+        with self.logfire.span("step:baseline_tensor_init"):
+            print("\nStep 2.5: Initializing baseline tensors...")
 
             entities = scene_result["entities"]
-            timepoints = scene_result["timepoints"]
-            first_timepoint = timepoints[0] if timepoints else None
-
-            if not first_timepoint:
-                print("  ⚠️  No timepoints - skipping prospection")
-                return
-
-            llm = scene_result["llm_client"]
             store = scene_result["store"]
 
-            # Import functions
-            from workflows import generate_prospective_state
-            from tensor_initialization import (
-                initialize_tensor_from_prospection,
-                create_fallback_tensor,
-                validate_tensor_initialization
-            )
+            # Import baseline tensor creation
+            from tensor_initialization import create_baseline_tensor, create_fallback_tensor
+            import base64
+            import json
 
             entities_initialized = 0
             entities_failed = 0
 
             for entity in entities:
                 try:
-                    print(f"  Generating prospection for {entity.entity_id}...")
+                    print(f"  Creating baseline tensor for {entity.entity_id}...")
 
-                    # Generate prospective state (M15)
-                    prospective_state = generate_prospective_state(
-                        entity, first_timepoint, llm, store
-                    )
+                    # Create baseline tensor (instant, no LLM)
+                    tensor = create_baseline_tensor(entity)
 
-                    # Initialize tensor from prospection
-                    tensor = initialize_tensor_from_prospection(
-                        entity, prospective_state, first_timepoint
-                    )
-
-                    # Validate tensor
-                    valid, error_msg = validate_tensor_initialization(tensor)
-                    if not valid:
-                        print(f"  ⚠️  Tensor validation failed for {entity.entity_id}: {error_msg}")
-                        # Use fallback
-                        tensor = create_fallback_tensor()
-
-                    # Set entity tensor (base64-encoded JSON string, matching expected format)
-                    import base64
-                    import json
+                    # Serialize tensor to entity.tensor
                     entity.tensor = json.dumps({
                         "context_vector": base64.b64encode(tensor.context_vector).decode('utf-8'),
                         "biology_vector": base64.b64encode(tensor.biology_vector).decode('utf-8'),
                         "behavior_vector": base64.b64encode(tensor.behavior_vector).decode('utf-8')
                     })
-                    entity.entity_metadata["prospection_initialized"] = True
-                    entity.entity_metadata["prospective_id"] = prospective_state.prospective_id
 
-                    # Save prospective state to store
-                    try:
-                        store.save_prospective_state(prospective_state)
-                    except Exception as e:
-                        print(f"  ⚠️  Failed to save prospective state: {e}")
-                        # Non-fatal - continue
+                    # Set maturity and training metadata
+                    entity.tensor_maturity = 0.0  # Baseline only, needs population + training
+                    entity.tensor_training_cycles = 0
+                    entity.entity_metadata["baseline_initialized"] = True
+                    entity.entity_metadata["needs_llm_population"] = True
+                    entity.entity_metadata["needs_training"] = True
+
+                    # Save entity with baseline tensor
+                    store.save_entity(entity)
 
                     entities_initialized += 1
-                    print(f"  ✓ {entity.entity_id}: tensor initialized from prospection")
+                    print(f"  ✓ {entity.entity_id}: baseline tensor created (maturity: 0.0)")
 
                 except Exception as e:
-                    print(f"  ⚠️  Failed to initialize {entity.entity_id}: {e}")
+                    print(f"  ⚠️  Failed to create baseline for {entity.entity_id}: {e}")
                     entities_failed += 1
 
-                    # Create fallback minimal tensor (ALWAYS initialize)
+                    # Fallback: create minimal tensor
                     try:
-                        from tensor_initialization import create_fallback_tensor
-                        import base64
-                        import json
                         fallback_tensor = create_fallback_tensor()
                         entity.tensor = json.dumps({
                             "context_vector": base64.b64encode(fallback_tensor.context_vector).decode('utf-8'),
                             "biology_vector": base64.b64encode(fallback_tensor.biology_vector).decode('utf-8'),
                             "behavior_vector": base64.b64encode(fallback_tensor.behavior_vector).decode('utf-8')
                         })
-                        entity.entity_metadata["prospection_initialized"] = False
+                        entity.tensor_maturity = 0.0
+                        entity.tensor_training_cycles = 0
+                        entity.entity_metadata["baseline_initialized"] = False
                         entity.entity_metadata["fallback_tensor"] = True
+                        store.save_entity(entity)
                         entities_initialized += 1
+                        print(f"  ⚠️  {entity.entity_id}: using fallback tensor")
                     except Exception as fallback_err:
                         print(f"  ❌ Fatal: Even fallback failed for {entity.entity_id}: {fallback_err}")
 
-            print(f"✓ Initialized {entities_initialized} entities with prospection tensors")
+            print(f"✓ Initialized {entities_initialized} entities with baseline tensors")
             if entities_failed > 0:
                 print(f"  ⚠️  {entities_failed} entities used fallback tensors")
+            print(f"  📝 Note: LLM-guided population happens during ANDOS training (Step 4)")
 
             self.logfire.info(
-                "Prospection synthesis complete",
+                "Baseline tensor initialization complete",
                 entities_initialized=entities_initialized,
                 entities_failed=entities_failed
             )
@@ -488,6 +468,46 @@ class FullE2EWorkflowRunner:
                 print(f"\n  🔷 ANDOS Layer {layer_idx}/{len(andos_layers)-1}: Training {len(layer_entities)} entities")
                 layer_ids = [e.entity_id for e in layer_entities]
                 print(f"     Entities: {layer_ids}")
+
+                # Step 4a: LLM-guided tensor population + optional prospection (Phase 11)
+                config = scene_result.get("config", {})
+                for entity in layer_entities:
+                    first_timepoint = timepoints[0] if timepoints else None
+                    if not first_timepoint:
+                        continue
+
+                    # LLM-guided population (if needed)
+                    if entity.entity_metadata.get("needs_llm_population", False):
+                        try:
+                            from tensor_initialization import populate_tensor_llm_guided
+                            print(f"     🔧 LLM-guided population for {entity.entity_id}...")
+                            refined_tensor, maturity = populate_tensor_llm_guided(
+                                entity, first_timepoint, graph, llm
+                            )
+                            import json, base64
+                            entity.tensor = json.dumps({
+                                "context_vector": base64.b64encode(refined_tensor.context_vector).decode('utf-8'),
+                                "biology_vector": base64.b64encode(refined_tensor.biology_vector).decode('utf-8'),
+                                "behavior_vector": base64.b64encode(refined_tensor.behavior_vector).decode('utf-8')
+                            })
+                            entity.entity_metadata["needs_llm_population"] = False
+                            store.save_entity(entity)
+                            print(f"       ✓ Populated (maturity: {maturity:.3f})")
+                        except Exception as e:
+                            print(f"       ⚠️  Population failed: {e}")
+
+                    # Optional prospection (M15) - triggered conditionally
+                    try:
+                        from prospection_triggers import trigger_prospection_for_entity, refine_tensor_from_prospection
+                        prospective_state = trigger_prospection_for_entity(
+                            entity, first_timepoint, llm, store, config
+                        )
+                        if prospective_state:
+                            # Optionally refine tensor from prospection
+                            refine_tensor_from_prospection(entity, prospective_state)
+                            store.save_entity(entity)
+                    except Exception as e:
+                        print(f"       ⚠️  Prospection failed: {e}")
 
                 # Train each entity in this layer across all timepoints
                 for timepoint in timepoints:
