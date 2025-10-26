@@ -509,14 +509,15 @@ class FullE2EWorkflowRunner:
                     except Exception as e:
                         print(f"       ⚠️  Prospection failed: {e}")
 
-                # Train each entity in this layer across all timepoints
-                for timepoint in timepoints:
+                # Train entities in this layer (using first timepoint as context)
+                first_timepoint = timepoints[0] if timepoints else None
+                if first_timepoint:
                     # Build workflow state for entities in this layer
                     workflow_state = {
-                        "graph": graph if graph else store.load_graph(timepoint.timepoint_id),
+                        "graph": graph if graph else store.load_graph(first_timepoint.timepoint_id),
                         "entities": layer_entities,  # Only train current layer
-                        "timepoint": timepoint.timepoint_id,
-                        "timepoint_obj": timepoint,
+                        "timepoint": first_timepoint.timepoint_id,
+                        "timepoint_obj": first_timepoint,
                         "resolution": ResolutionLevel.SCENE,
                         "violations": [],
                         "results": {},
@@ -524,7 +525,7 @@ class FullE2EWorkflowRunner:
                     }
 
                     try:
-                        # Run workflow for this layer
+                        # Run workflow for this layer (ONCE per layer, not per timepoint)
                         result_state = workflow.invoke(workflow_state)
 
                         # Extract trained entities from result and UPDATE the layer

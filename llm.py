@@ -10,17 +10,138 @@ import numpy as np
 import hashlib
 import time
 from functools import lru_cache
+import threading
+from collections import deque
 
 T = TypeVar('T')
+
+
+class RateLimiter:
+    """
+    Thread-safe token bucket rate limiter for API calls.
+
+    Uses a sliding window to track requests and enforces rate limits
+    across all instances (global tracking).
+    """
+    # Class-level (global) tracking across all instances
+    _global_lock = threading.Lock()
+    _global_request_times: deque = deque()
+    _global_enabled = True
+
+    def __init__(self, max_requests_per_minute: int = 20, burst_size: int = 5):
+        """
+        Initialize rate limiter.
+
+        Args:
+            max_requests_per_minute: Maximum requests allowed per minute (default: 20)
+            burst_size: Maximum burst size (default: 5)
+        """
+        self.max_requests_per_minute = max_requests_per_minute
+        self.burst_size = burst_size
+        self.min_interval = 60.0 / max_requests_per_minute  # Seconds between requests
+
+    def wait_if_needed(self) -> float:
+        """
+        Wait if necessary to respect rate limits.
+
+        Returns:
+            float: Seconds waited (0.0 if no wait needed)
+        """
+        if not RateLimiter._global_enabled:
+            return 0.0
+
+        with RateLimiter._global_lock:
+            now = time.time()
+
+            # Remove requests older than 60 seconds (sliding window)
+            while RateLimiter._global_request_times and \
+                  now - RateLimiter._global_request_times[0] > 60.0:
+                RateLimiter._global_request_times.popleft()
+
+            # Check if we're at the rate limit
+            if len(RateLimiter._global_request_times) >= self.max_requests_per_minute:
+                # Calculate how long to wait
+                oldest_request = RateLimiter._global_request_times[0]
+                wait_time = 60.0 - (now - oldest_request) + 0.1  # Add 100ms buffer
+
+                if wait_time > 0:
+                    print(f"    ⏱️  Rate limit reached ({len(RateLimiter._global_request_times)}/{self.max_requests_per_minute} requests/min)")
+                    print(f"    ⏳ Waiting {wait_time:.1f}s before next API call...")
+                    time.sleep(wait_time)
+                    now = time.time()
+
+            # Check burst size (prevent too many requests in short period)
+            recent_requests = sum(1 for t in RateLimiter._global_request_times if now - t < 5.0)
+            if recent_requests >= self.burst_size:
+                # Enforce minimum interval between requests
+                if RateLimiter._global_request_times:
+                    last_request = RateLimiter._global_request_times[-1]
+                    time_since_last = now - last_request
+                    if time_since_last < self.min_interval:
+                        wait_time = self.min_interval - time_since_last
+                        print(f"    ⏳ Burst control: waiting {wait_time:.1f}s...")
+                        time.sleep(wait_time)
+                        now = time.time()
+
+            # Record this request
+            RateLimiter._global_request_times.append(now)
+
+            return 0.0
+
+    @classmethod
+    def disable_globally(cls):
+        """Disable rate limiting globally (for testing)"""
+        cls._global_enabled = False
+        print("⚠️  Rate limiting DISABLED globally")
+
+    @classmethod
+    def enable_globally(cls):
+        """Enable rate limiting globally"""
+        cls._global_enabled = True
+        print("✓ Rate limiting ENABLED globally")
+
+    @classmethod
+    def reset(cls):
+        """Reset global rate limit tracking"""
+        with cls._global_lock:
+            cls._global_request_times.clear()
+            print("🔄 Rate limiter reset")
+
+    @classmethod
+    def get_stats(cls) -> Dict[str, Any]:
+        """Get current rate limiting statistics"""
+        with cls._global_lock:
+            now = time.time()
+            recent_1min = sum(1 for t in cls._global_request_times if now - t < 60.0)
+            recent_5sec = sum(1 for t in cls._global_request_times if now - t < 5.0)
+
+            return {
+                "enabled": cls._global_enabled,
+                "total_requests": len(cls._global_request_times),
+                "requests_last_minute": recent_1min,
+                "requests_last_5sec": recent_5sec,
+            }
 
 
 class OpenRouterClient:
     """Custom HTTP client for OpenRouter API (replaces OpenAI client)"""
 
-    def __init__(self, api_key: str, base_url: str = "https://openrouter.ai/api/v1"):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://openrouter.ai/api/v1",
+        max_requests_per_minute: int = 20,
+        burst_size: int = 5
+    ):
         self.api_key = api_key
         self.base_url = base_url.rstrip('/')
         self.client = httpx.Client(timeout=60.0)
+
+        # Initialize rate limiter
+        self.rate_limiter = RateLimiter(
+            max_requests_per_minute=max_requests_per_minute,
+            burst_size=burst_size
+        )
 
     @property
     def chat(self):
@@ -33,7 +154,10 @@ class OpenRouterClient:
         return self
 
     def create(self, **kwargs):
-        """Make a chat completion request to OpenRouter"""
+        """Make a chat completion request to OpenRouter with rate limiting"""
+        # Apply rate limiting before making request
+        self.rate_limiter.wait_if_needed()
+
         url = f"{self.base_url}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -53,14 +177,38 @@ class OpenRouterClient:
         # Remove None values
         data = {k: v for k, v in data.items() if v is not None}
 
-        try:
-            response = self.client.post(url, headers=headers, json=data)
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            raise Exception(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
-        except Exception as e:
-            raise Exception(f"Request failed: {str(e)}")
+        max_retries = 3
+        retry_delay = 2.0
+
+        for attempt in range(max_retries):
+            try:
+                response = self.client.post(url, headers=headers, json=data)
+                response.raise_for_status()
+                return response.json()
+
+            except httpx.HTTPStatusError as e:
+                # Handle rate limit errors (429) with exponential backoff
+                if e.response.status_code == 429:
+                    if attempt < max_retries - 1:
+                        wait_time = retry_delay * (2 ** attempt)
+                        print(f"    ⚠️  Rate limit (429) from API - waiting {wait_time:.1f}s...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        raise Exception(f"OpenRouter API rate limit exceeded after {max_retries} retries")
+
+                # Handle other HTTP errors
+                raise Exception(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait_time = retry_delay * (2 ** attempt)
+                    print(f"    ⚠️  Request failed (attempt {attempt + 1}/{max_retries}): {e}")
+                    print(f"    ⏳ Retrying in {wait_time:.1f}s...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    raise Exception(f"Request failed after {max_retries} retries: {str(e)}")
 
     def __del__(self):
         """Clean up HTTP client"""
@@ -242,7 +390,15 @@ class ValidationResult(BaseModel):
 class LLMClient:
     """Unified LLM client with cost tracking and model selection (REAL LLM only)"""
 
-    def __init__(self, api_key: str, base_url: str = "https://openrouter.ai/api/v1", default_model: Optional[str] = None, model_cache_ttl_hours: int = 24):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://openrouter.ai/api/v1",
+        default_model: Optional[str] = None,
+        model_cache_ttl_hours: int = 24,
+        max_requests_per_minute: int = 20,
+        burst_size: int = 5
+    ):
         # VALIDATION: API key is required
         if not api_key:
             raise ValueError(
@@ -267,8 +423,16 @@ class LLMClient:
         print(f"🦙 Using LLM model: {self.default_model}")
         print(f"📋 Available Llama models: {len(self.model_manager.get_llama_models())} cached")
 
-        # Always create real OpenRouter client
-        self.client = OpenRouterClient(api_key=api_key, base_url=base_url)
+        # Always create real OpenRouter client with rate limiting
+        self.client = OpenRouterClient(
+            api_key=api_key,
+            base_url=base_url,
+            max_requests_per_minute=max_requests_per_minute,
+            burst_size=burst_size
+        )
+
+        # Print rate limit configuration
+        print(f"⏱️  Rate limiting: {max_requests_per_minute} requests/min, burst size: {burst_size}")
     
     def populate_entity(self, entity_schema: Dict, context: Dict, previous_knowledge: List[str] = None, model: Optional[str] = None) -> EntityPopulation:
         """Populate entity with structured output (REAL LLM only)"""
