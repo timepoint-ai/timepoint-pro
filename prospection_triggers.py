@@ -36,13 +36,20 @@ def should_trigger_prospection(
     Args:
         entity: Entity to evaluate
         timepoint: Current timepoint context
-        config: Simulation configuration with prospection_config
+        config: Simulation configuration with prospection_config (dict or SimulationConfig)
 
     Returns:
         True if prospection should be triggered
     """
     # Check 1: Template-level configuration
-    prospection_config = config.get("metadata", {}).get("prospection_config", {})
+    # Handle both dict and SimulationConfig object
+    if hasattr(config, 'metadata'):
+        # SimulationConfig object
+        metadata = config.metadata if config.metadata else {}
+        prospection_config = metadata.get("prospection_config", {}) if isinstance(metadata, dict) else {}
+    else:
+        # Dict
+        prospection_config = config.get("metadata", {}).get("prospection_config", {})
 
     # Explicit entity list
     modeling_entity = prospection_config.get("modeling_entity")
@@ -114,7 +121,14 @@ def get_prospection_params(
         - anxiety_baseline: 0.0-1.0 default anxiety level
         - forecast_confidence: 0.0-1.0 confidence in predictions
     """
-    prospection_config = config.get("metadata", {}).get("prospection_config", {})
+    # Handle both dict and SimulationConfig object
+    if hasattr(config, 'metadata'):
+        # SimulationConfig object
+        metadata = config.metadata if config.metadata else {}
+        prospection_config = metadata.get("prospection_config", {}) if isinstance(metadata, dict) else {}
+    else:
+        # Dict
+        prospection_config = config.get("metadata", {}).get("prospection_config", {})
 
     # Get time horizons
     time_horizons = prospection_config.get("time_horizons", ["24h"])

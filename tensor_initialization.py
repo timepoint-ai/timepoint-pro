@@ -22,9 +22,76 @@ import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 import json
 import base64
+import msgspec
+import time
 
 from schemas import TTMTensor, Entity, Timepoint, ResolutionLevel
 from metadata.tracking import track_mechanism
+
+
+# ============================================================================
+# Helper: LLM Retry Logic
+# ============================================================================
+
+def _call_llm_with_retry(llm_client: Any, prompt: str, max_retries: int = 3, initial_delay: float = 1.0) -> Dict[str, Any]:
+    """
+    Call LLM with exponential backoff retry logic.
+
+    Args:
+        llm_client: LLM client to use
+        prompt: Prompt to send
+        max_retries: Maximum retry attempts (default 3)
+        initial_delay: Initial delay in seconds (default 1.0)
+
+    Returns:
+        Parsed JSON response from LLM
+
+    Raises:
+        Exception if all retries fail
+    """
+    delay = initial_delay
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            response = llm_client.client.chat.completions.create(
+                model=llm_client.default_model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=500
+            )
+
+            # OpenRouterClient returns dict from response.json() - use dict syntax
+            content = response["choices"][0]["message"]["content"]
+
+            # Handle empty responses
+            if not content or content.strip() == "":
+                raise ValueError("Empty response from LLM")
+
+            # Clean and parse JSON
+            content = content.strip().strip("```json").strip("```").strip()
+
+            if not content:
+                raise ValueError("Response became empty after cleaning")
+
+            result = json.loads(content)
+            return result
+
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            last_error = e
+
+            if attempt < max_retries - 1:
+                print(f"    ⚠️  LLM call failed (attempt {attempt + 1}/{max_retries}): {e}")
+                print(f"    ⏳ Retrying in {delay:.1f}s...")
+                time.sleep(delay)
+                delay *= 2  # Exponential backoff
+            else:
+                # Final attempt failed
+                print(f"    ❌ All {max_retries} LLM attempts failed: {e}")
+                raise last_error
+
+    # Should never reach here, but just in case
+    raise last_error if last_error else Exception("LLM call failed")
 
 
 # ============================================================================
@@ -143,9 +210,9 @@ def populate_tensor_llm_guided(
 
     # Decode tensor
     tensor_dict = json.loads(tensor_json)
-    context = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["context_vector"])))
-    biology = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["biology_vector"])))
-    behavior = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["behavior_vector"])))
+    context = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["context_vector"])))
+    biology = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["biology_vector"])))
+    behavior = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["behavior_vector"])))
 
     # Loop 1: Metadata-based population
     context, biology, behavior = _population_loop_metadata(
@@ -209,15 +276,8 @@ Return JSON with: {{"context_adjustments": [...], "biology_adjustments": [...], 
 """
 
     try:
-        response = llm_client.client.chat.completions.create(
-            model=llm_client.default_model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=500
-        )
-
-        content = response["choices"][0]["message"]["content"]
-        adjustments = json.loads(content.strip().strip("```json").strip("```"))
+        # Use retry logic
+        adjustments = _call_llm_with_retry(llm_client, prompt, max_retries=3, initial_delay=0.5)
 
         # Apply adjustments (clamp to reasonable ranges)
         if "context_adjustments" in adjustments:
@@ -284,15 +344,8 @@ Return JSON with: {{"context_refinements": [...], "behavior_refinements": [...]}
 """
 
     try:
-        response = llm_client.client.chat.completions.create(
-            model=llm_client.default_model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=400
-        )
-
-        content = response["choices"][0]["message"]["content"]
-        refinements = json.loads(content.strip().strip("```json").strip("```"))
+        # Use retry logic
+        refinements = _call_llm_with_retry(llm_client, prompt, max_retries=3, initial_delay=0.5)
 
         # Apply refinements
         if "context_refinements" in refinements:
@@ -347,15 +400,9 @@ Return JSON with: {{"fixes": {{"context": [...], "biology": [...], "behavior": [
 """
 
         try:
-            response = llm_client.client.chat.completions.create(
-                model=llm_client.default_model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.4,
-                max_tokens=300
-            )
-
-            content = response["choices"][0]["message"]["content"]
-            fixes = json.loads(content.strip().strip("```json").strip("```"))["fixes"]
+            # Use retry logic
+            result = _call_llm_with_retry(llm_client, prompt, max_retries=3, initial_delay=0.5)
+            fixes = result.get("fixes", {})
 
             # Apply fixes
             if "context" in fixes and len(fixes["context"]) == 8:
@@ -476,9 +523,9 @@ def validate_tensor_maturity(entity: Entity, threshold: float = 0.95) -> Tuple[b
     tensor_json = entity.tensor
     try:
         tensor_dict = json.loads(tensor_json)
-        context = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["context_vector"])))
-        biology = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["biology_vector"])))
-        behavior = np.array(msgpack.msgpack.decode(base64.b64decode(tensor_dict["behavior_vector"])))
+        context = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["context_vector"])))
+        biology = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["biology_vector"])))
+        behavior = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["behavior_vector"])))
 
         # Check for zeros
         if np.any(context == 0) or np.any(biology == 0) or np.any(behavior == 0):
@@ -541,7 +588,6 @@ def train_tensor_to_maturity(
         # Load current tensor
         tensor_json = entity.tensor
         tensor_dict = json.loads(tensor_json)
-        import msgspec
         context = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["context_vector"])))
         biology = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["biology_vector"])))
         behavior = np.array(msgspec.msgpack.decode(base64.b64decode(tensor_dict["behavior_vector"])))

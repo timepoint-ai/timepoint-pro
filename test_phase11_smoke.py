@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from e2e_workflows.e2e_runner import FullE2EWorkflowRunner
-from generation.config_schema import SimulationConfig
+from generation.config_schema import SimulationConfig, EntityConfig, TimepointConfig, TemporalConfig, TemporalMode
 from metadata.run_tracker import MetadataManager
 
 def test_simple_scenario():
@@ -32,9 +32,9 @@ def test_simple_scenario():
     config = SimulationConfig(
         scenario_description="Two friends meet at a coffee shop to discuss a book they both read.",
         world_id="phase11_smoke_test",
-        entities=SimulationConfig.EntityConfig(count=2),
-        timepoints=SimulationConfig.TimepointConfig(count=1),
-        temporal=SimulationConfig.TemporalConfig(mode="pearl"),
+        entities=EntityConfig(count=2),
+        timepoints=TimepointConfig(count=1),
+        temporal=TemporalConfig(mode=TemporalMode.PEARL),
         metadata={
             "test": "phase_11_smoke"
         }

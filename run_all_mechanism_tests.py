@@ -9,6 +9,11 @@ ONE COMMAND to:
 - Validate Oxen publishing integration
 - Report comprehensive results
 
+Rate Limiting:
+- Includes automatic cooldown periods between tests (10-15s)
+- Prevents OpenRouter API rate limit errors
+- Safe for concurrent test execution
+
 Usage:
     python run_all_mechanism_tests.py           # Run quick mode (safe templates)
     python run_all_mechanism_tests.py --full    # Run all templates (expensive!)
@@ -17,6 +22,7 @@ import os
 import sys
 import subprocess
 import argparse
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Set
@@ -149,6 +155,12 @@ def run_all_templates(mode: str = 'quick'):
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 80)
     print()
+    print("⏱️  Rate Limiting Strategy:")
+    print("   - 10s cooldown between templates")
+    print("   - 15s cooldown between ANDOS scripts")
+    print("   - 15s cooldown between Phase 1 and Phase 2")
+    print("   - This prevents API rate limit errors")
+    print()
 
     # Initialize
     metadata_manager = MetadataManager(db_path="metadata/runs.db")
@@ -205,15 +217,31 @@ def run_all_templates(mode: str = 'quick'):
         results[name] = result
         total_cost += result.get('cost', 0.0)
 
+        # Add delay between templates to respect rate limits
+        if idx < len(templates_to_run):
+            print(f"\n⏱️  Cooling down for 10s before next template (rate limit prevention)...")
+            time.sleep(10)
+
     # Run ANDOS test scripts
     print(f"\n{'='*80}")
     print(f"PHASE 2: ANDOS Test Scripts ({len(andos_scripts)} scripts)")
-    print(f"{'='*80}\n")
+    print(f"{'='*80}")
+
+    # Cool down between phases
+    if templates_to_run:
+        print(f"\n⏱️  Cooling down for 15s before ANDOS scripts (rate limit prevention)...")
+        time.sleep(15)
+    print()
 
     for idx, (script, name, expected) in enumerate(andos_scripts, 1):
         print(f"[{idx}/{len(andos_scripts)}] {name}")
         result = run_andos_script(script, name, expected)
         results[name] = result
+
+        # Add delay between ANDOS scripts to respect rate limits
+        if idx < len(andos_scripts):
+            print(f"\n⏱️  Cooling down for 15s before next script (rate limit prevention)...")
+            time.sleep(15)
 
     # Generate comprehensive report
     print("\n" + "=" * 80)
