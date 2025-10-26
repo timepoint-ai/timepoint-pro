@@ -16,6 +16,13 @@ Key Insight:
 - OLD: Prospection was MANDATORY for initialization (mechanism theater)
 - NEW: Baseline + LLM loops for initialization, prospection is OPTIONAL enhancement
 - Result: No indirect bias leakage, proper separation of concerns
+
+Robustness Improvements (Phase 11.1 - JSON Extraction Fix):
+- Robust JSON extraction from LLM responses (handles preambles, markdown fences)
+- Account-level rate limit detection (5 consecutive failures → 300s cooldown)
+- Comprehensive JSONL logging for diagnostics (logs/llm_tensor_population_YYYY-MM-DD.jsonl)
+- Improved prompts requesting JSON-only responses
+- Full unit test coverage (test_json_extraction.py)
 """
 
 import numpy as np
@@ -24,24 +31,211 @@ import json
 import base64
 import msgspec
 import time
+from datetime import datetime
+from pathlib import Path
 
 from schemas import TTMTensor, Entity, Timepoint, ResolutionLevel
 from metadata.tracking import track_mechanism
 
 
 # ============================================================================
+# Global: Account-Level Rate Limit Detection
+# ============================================================================
+
+_consecutive_empty_responses = 0
+_max_consecutive_failures = 5
+_cooldown_seconds = 300  # 5 minutes
+
+
+def _log_llm_call(
+    prompt: str,
+    response: Any,
+    error: Optional[Exception],
+    attempt: int,
+    max_retries: int,
+    success: bool
+) -> None:
+    """Log LLM call details to JSONL file for debugging."""
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True)
+
+    log_file = log_dir / f"llm_tensor_population_{datetime.now().strftime('%Y-%m-%d')}.jsonl"
+
+    log_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "prompt_preview": prompt[:200] + "..." if len(prompt) > 200 else prompt,
+        "prompt_length": len(prompt),
+        "attempt": attempt,
+        "max_retries": max_retries,
+        "success": success,
+        "error_type": type(error).__name__ if error else None,
+        "error_message": str(error) if error else None,
+        "response_type": type(response).__name__ if response else None,
+    }
+
+    # Add response details if available
+    if response and isinstance(response, dict):
+        log_entry["response_has_choices"] = "choices" in response
+        if "choices" in response and len(response["choices"]) > 0:
+            content = response["choices"][0].get("message", {}).get("content", "")
+            log_entry["response_content_length"] = len(content) if content else 0
+            log_entry["response_empty"] = not content or content.strip() == ""
+            log_entry["response_preview"] = (content[:100] + "...") if content and len(content) > 100 else content
+
+    # Write to log file
+    with open(log_file, "a") as f:
+        f.write(json.dumps(log_entry) + "\n")
+
+
+def _print_llm_call_statistics() -> None:
+    """Print statistics summary of LLM calls from today's log file."""
+    log_dir = Path("logs")
+    log_file = log_dir / f"llm_tensor_population_{datetime.now().strftime('%Y-%m-%d')}.jsonl"
+
+    if not log_file.exists():
+        print("    📊 No LLM call logs yet today")
+        return
+
+    # Read and parse log entries
+    successes = 0
+    failures = 0
+    total_attempts = 0
+    error_types = {}
+
+    try:
+        with open(log_file, "r") as f:
+            for line in f:
+                entry = json.loads(line.strip())
+                total_attempts += 1
+
+                if entry.get("success"):
+                    successes += 1
+                else:
+                    failures += 1
+                    error_type = entry.get("error_type", "Unknown")
+                    error_types[error_type] = error_types.get(error_type, 0) + 1
+
+        # Print summary
+        print(f"\n    📊 LLM Call Statistics (today):")
+        print(f"       Total attempts: {total_attempts}")
+        print(f"       ✅ Successes: {successes} ({successes/total_attempts*100:.1f}%)" if total_attempts > 0 else "       ✅ Successes: 0")
+        print(f"       ❌ Failures: {failures} ({failures/total_attempts*100:.1f}%)" if total_attempts > 0 else "       ❌ Failures: 0")
+
+        if error_types:
+            print(f"       Error types:")
+            for error_type, count in sorted(error_types.items(), key=lambda x: -x[1]):
+                print(f"         - {error_type}: {count}")
+
+        print(f"       📄 Full logs: {log_file}")
+
+    except Exception as e:
+        print(f"    ⚠️  Failed to read log statistics: {e}")
+
+
+def _extract_json_from_response(content: str) -> str:
+    """
+    Extract JSON from LLM response that may contain explanatory text.
+
+    Handles cases like:
+    - "Here is the fix: {\"key\": \"value\"}"
+    - "```json\\n{\"key\": \"value\"}\\n```"
+    - "Based on analysis:\\n\\n{\"key\": \"value\"}\\n\\nExplanation..."
+
+    Args:
+        content: Raw LLM response content
+
+    Returns:
+        Extracted JSON string (or original content if no brackets found)
+
+    Raises:
+        ValueError if no JSON structure found
+    """
+    content = content.strip()
+
+    # Strip markdown code fences first
+    if content.startswith("```"):
+        # Remove opening fence
+        lines = content.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        # Remove closing fence
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        content = "\n".join(lines).strip()
+
+    # Find first opening bracket (object or array)
+    start_obj = content.find("{")
+    start_arr = content.find("[")
+
+    # Determine which comes first (or if neither exists)
+    if start_obj == -1 and start_arr == -1:
+        raise ValueError("No JSON structure found (no opening bracket)")
+
+    if start_obj == -1:
+        start = start_arr
+        opening = "["
+        closing = "]"
+    elif start_arr == -1:
+        start = start_obj
+        opening = "{"
+        closing = "}"
+    else:
+        start = min(start_obj, start_arr)
+        opening = "{" if start == start_obj else "["
+        closing = "}" if opening == "{" else "]"
+
+    # Find matching closing bracket using counter
+    depth = 0
+    in_string = False
+    escape_next = False
+
+    for i in range(start, len(content)):
+        char = content[i]
+
+        # Handle string escapes
+        if escape_next:
+            escape_next = False
+            continue
+
+        if char == "\\":
+            escape_next = True
+            continue
+
+        # Track if we're inside a string (don't count brackets in strings)
+        if char == '"':
+            in_string = not in_string
+            continue
+
+        if in_string:
+            continue
+
+        # Count bracket depth
+        if char == opening:
+            depth += 1
+        elif char == closing:
+            depth -= 1
+
+            # Found matching closing bracket
+            if depth == 0:
+                return content[start:i+1]
+
+    # If we get here, brackets weren't balanced
+    raise ValueError(f"Unbalanced brackets: found opening {opening} but no matching {closing}")
+
+
+# ============================================================================
 # Helper: LLM Retry Logic
 # ============================================================================
 
-def _call_llm_with_retry(llm_client: Any, prompt: str, max_retries: int = 3, initial_delay: float = 1.0) -> Dict[str, Any]:
+def _call_llm_with_retry(llm_client: Any, prompt: str, max_retries: int = 3, initial_delay: float = 5.0) -> Dict[str, Any]:
     """
-    Call LLM with exponential backoff retry logic.
+    Call LLM with exponential backoff retry logic and comprehensive logging.
 
     Args:
         llm_client: LLM client to use
         prompt: Prompt to send
         max_retries: Maximum retry attempts (default 3)
-        initial_delay: Initial delay in seconds (default 1.0)
+        initial_delay: Initial delay in seconds (default 5.0 for rate limit recovery)
 
     Returns:
         Parsed JSON response from LLM
@@ -49,12 +243,15 @@ def _call_llm_with_retry(llm_client: Any, prompt: str, max_retries: int = 3, ini
     Raises:
         Exception if all retries fail
     """
+    global _consecutive_empty_responses
+
     delay = initial_delay
     last_error = None
 
     for attempt in range(max_retries):
+        response_obj = None
         try:
-            response = llm_client.client.chat.completions.create(
+            response_obj = llm_client.client.chat.completions.create(
                 model=llm_client.default_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
@@ -62,23 +259,58 @@ def _call_llm_with_retry(llm_client: Any, prompt: str, max_retries: int = 3, ini
             )
 
             # OpenRouterClient returns dict from response.json() - use dict syntax
-            content = response["choices"][0]["message"]["content"]
+            content = response_obj["choices"][0]["message"]["content"]
 
             # Handle empty responses
             if not content or content.strip() == "":
+                # Log empty response
+                _log_llm_call(prompt, response_obj, ValueError("Empty response from LLM"), attempt + 1, max_retries, False)
+
+                # Track consecutive failures for account-level rate limiting
+                _consecutive_empty_responses += 1
+                if _consecutive_empty_responses >= _max_consecutive_failures:
+                    print(f"\n🚫 Account-level rate limit detected ({_consecutive_empty_responses} consecutive failures)")
+                    print(f"⏳ Entering {_cooldown_seconds}s cooldown to let API recover...")
+                    time.sleep(_cooldown_seconds)
+                    _consecutive_empty_responses = 0  # Reset after cooldown
+
                 raise ValueError("Empty response from LLM")
 
-            # Clean and parse JSON
-            content = content.strip().strip("```json").strip("```").strip()
+            # Extract JSON from response (handles preambles like "Here is the fix: {...}")
+            try:
+                json_content = _extract_json_from_response(content)
+            except ValueError as e:
+                # No JSON structure found
+                _log_llm_call(prompt, response_obj, e, attempt + 1, max_retries, False)
+                _consecutive_empty_responses += 1
+                if _consecutive_empty_responses >= _max_consecutive_failures:
+                    print(f"\n🚫 Account-level rate limit detected ({_consecutive_empty_responses} consecutive failures)")
+                    print(f"⏳ Entering {_cooldown_seconds}s cooldown to let API recover...")
+                    time.sleep(_cooldown_seconds)
+                    _consecutive_empty_responses = 0
+                raise
 
-            if not content:
-                raise ValueError("Response became empty after cleaning")
+            # Parse JSON
+            result = json.loads(json_content)
 
-            result = json.loads(content)
+            # Success! Log it and reset consecutive failures
+            _log_llm_call(prompt, response_obj, None, attempt + 1, max_retries, True)
+            _consecutive_empty_responses = 0
             return result
 
         except (json.JSONDecodeError, ValueError, KeyError) as e:
             last_error = e
+
+            # Log the failure
+            _log_llm_call(prompt, response_obj, e, attempt + 1, max_retries, False)
+
+            # Track consecutive failures for account-level rate limiting (JSONDecodeError likely means malformed response)
+            _consecutive_empty_responses += 1
+            if _consecutive_empty_responses >= _max_consecutive_failures:
+                print(f"\n🚫 Account-level rate limit detected ({_consecutive_empty_responses} consecutive failures)")
+                print(f"⏳ Entering {_cooldown_seconds}s cooldown to let API recover...")
+                time.sleep(_cooldown_seconds)
+                _consecutive_empty_responses = 0  # Reset after cooldown
 
             if attempt < max_retries - 1:
                 print(f"    ⚠️  LLM call failed (attempt {attempt + 1}/{max_retries}): {e}")
@@ -88,6 +320,8 @@ def _call_llm_with_retry(llm_client: Any, prompt: str, max_retries: int = 3, ini
             else:
                 # Final attempt failed
                 print(f"    ❌ All {max_retries} LLM attempts failed: {e}")
+                log_file = Path("logs") / f"llm_tensor_population_{datetime.now().strftime('%Y-%m-%d')}.jsonl"
+                print(f"    📄 Full logs: {log_file}")
                 raise last_error
 
     # Should never reach here, but just in case
@@ -236,6 +470,9 @@ def populate_tensor_llm_guided(
     maturity = compute_tensor_maturity(refined_tensor, entity, training_complete=False)
     entity.tensor_maturity = maturity
 
+    # Print LLM call statistics summary
+    _print_llm_call_statistics()
+
     return refined_tensor, maturity
 
 
@@ -272,12 +509,15 @@ Current tensor values:
 - Behavior: {behavior.tolist()}
 
 Suggest adjustments as multipliers (0.5-2.0) for each dimension to better reflect the entity.
-Return JSON with: {{"context_adjustments": [...], "biology_adjustments": [...], "behavior_adjustments": [...]}}
+
+IMPORTANT: Return ONLY valid JSON with NO explanation, NO markdown, NO preamble.
+Expected format:
+{{"context_adjustments": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "biology_adjustments": [0.5, 0.5, 0.5, 0.5], "behavior_adjustments": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]}}
 """
 
     try:
-        # Use retry logic
-        adjustments = _call_llm_with_retry(llm_client, prompt, max_retries=3, initial_delay=0.5)
+        # Use retry logic (uses default 5s → 10s → 20s delays for rate limit recovery)
+        adjustments = _call_llm_with_retry(llm_client, prompt, max_retries=3)
 
         # Apply adjustments (clamp to reasonable ranges)
         if "context_adjustments" in adjustments:
@@ -340,12 +580,15 @@ Current tensor values:
 - Behavior: {behavior.tolist()}
 
 Based on network position, suggest refinements (focus on context dims 5-7 for social factors).
-Return JSON with: {{"context_refinements": [...], "behavior_refinements": [...]}}
+
+IMPORTANT: Return ONLY valid JSON with NO explanation, NO markdown, NO preamble.
+Expected format:
+{{"context_refinements": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "behavior_refinements": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}
 """
 
     try:
-        # Use retry logic
-        refinements = _call_llm_with_retry(llm_client, prompt, max_retries=3, initial_delay=0.5)
+        # Use retry logic (uses default 5s → 10s → 20s delays for rate limit recovery)
+        refinements = _call_llm_with_retry(llm_client, prompt, max_retries=3)
 
         # Apply refinements
         if "context_refinements" in refinements:
@@ -396,12 +639,15 @@ Current values:
 - Behavior: {behavior.tolist()}
 
 Suggest non-zero values (0.05-1.5 range) for the zero indices.
-Return JSON with: {{"fixes": {{"context": [...], "biology": [...], "behavior": [...]}}}}
+
+IMPORTANT: Return ONLY valid JSON with NO explanation, NO markdown, NO preamble.
+Expected format:
+{{"fixes": {{"context": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], "biology": [0.1, 0.1, 0.1, 0.1], "behavior": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]}}}}
 """
 
         try:
-            # Use retry logic
-            result = _call_llm_with_retry(llm_client, prompt, max_retries=3, initial_delay=0.5)
+            # Use retry logic (uses default 5s → 10s → 20s delays for rate limit recovery)
+            result = _call_llm_with_retry(llm_client, prompt, max_retries=3)
             fixes = result.get("fixes", {})
 
             # Apply fixes

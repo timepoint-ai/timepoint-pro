@@ -495,6 +495,9 @@ class FullE2EWorkflowRunner:
                             print(f"       ✓ Populated (maturity: {maturity:.3f})")
                         except Exception as e:
                             print(f"       ⚠️  Population failed: {e}")
+                    else:
+                        # Entity already populated or doesn't need population
+                        print(f"     ✓ {entity.entity_id}: Already populated, skipping LLM call")
 
                     # Optional prospection (M15) - triggered conditionally
                     try:
