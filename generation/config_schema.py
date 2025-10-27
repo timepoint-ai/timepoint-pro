@@ -844,6 +844,214 @@ class SimulationConfig(BaseModel):
             }
         )
 
+    @classmethod
+    def example_constitutional_convention_day1(cls) -> "SimulationConfig":
+        """
+        Constitutional Convention Day 1 - Large-scale stress test demonstrating all mechanisms.
+
+        May 25, 1787: The Constitutional Convention opens at Independence Hall, Philadelphia.
+        28 entities (25 Founding Fathers + 3 animistic entities) across 500 timepoints
+        (minute-level resolution) spanning 8 hours of deliberation. This massive simulation
+        exercises 16/17 mechanisms and generates vast training data for character roleplay.
+
+        Key Features:
+        - 500 timepoints = ultra-high temporal resolution (1 per minute)
+        - 25 historical figures with dense relationship networks (8-10 connections each)
+        - Animistic entities: Independence Hall, "Confederation", "Union"
+        - Progressive elevation: Key figures (Washington, Madison, Franklin) → TRAINED
+        - Rich dialogs: Debates, private conversations, faction negotiations
+        - Embodied constraints: Franklin's gout (age 81), circadian fatigue patterns
+        - Knowledge propagation: Ideas flow between state delegations and factions
+        - Estimated cost: $500-1,000 USD | Training data: 14,000+ entity-timepoint states
+
+        Historical Context:
+        - Quorum just achieved (7 states represented)
+        - Washington unanimously elected presiding officer
+        - Rules of procedure established
+        - Secrecy rule imposed (closed doors)
+        - Initial debates on Virginia Plan vs federal reform
+        - Factional tensions: Large states vs Small states, North vs South
+        """
+        return cls(
+            scenario_description=(
+                "May 25, 1787, Pennsylvania State House (Independence Hall), Philadelphia. "
+                "The Constitutional Convention officially opens after weeks of delayed arrivals. "
+                "As delegates gather in the Assembly Room at 10:00 AM, the weight of history "
+                "presses upon them. The Articles of Confederation have failed—the young nation "
+                "teeters on collapse. Seven state delegations have achieved quorum. "
+                "\n\n"
+                "George Washington of Virginia arrives, reluctant but resolved. James Madison, "
+                "the architect, clutches his notes on government theory. Benjamin Franklin at 81, "
+                "suffering from gout, is carried in on a sedan chair. Alexander Hamilton advocates "
+                "for a strong national government. State delegations cluster: Virginia's five "
+                "delegates (Washington, Madison, Mason, Randolph, Blair) caucus near the windows. "
+                "Pennsylvania's contingent (Franklin, Gouverneur Morris, James Wilson, Robert Morris) "
+                "commands the center. Small state delegates from Delaware (Dickinson, Read, Bassett, "
+                "Bedford) eye the Virginians warily, fearing domination by large states. "
+                "\n\n"
+                "By noon, Washington is unanimously elected president of the Convention. Rules "
+                "are debated: secrecy (to allow candid discussion), voting by state (one vote per "
+                "delegation), quorum requirements. The room atmosphere shifts—formal at first, "
+                "growing tense as philosophical differences emerge. The ancient walls of Independence "
+                "Hall seem to listen, having witnessed the Declaration eleven years prior. "
+                "\n\n"
+                "Track 500 timepoints from 10:00 AM to 6:00 PM (minute-level resolution): "
+                "Roll call and credentialing (10:00-10:45), election of president (10:45-11:30), "
+                "rules debate (11:30-1:00 PM), lunch recess with private faction negotiations "
+                "(1:00-2:00 PM), Edmund Randolph introduces Virginia Plan outline (2:00-4:00 PM), "
+                "initial reactions and adjournment debate (4:00-6:00 PM). "
+                "\n\n"
+                "Physical constraints matter: Franklin's pain level increases across the day "
+                "(gout flare-ups), delegates' energy depletes (circadian patterns from morning "
+                "alertness to evening exhaustion), room temperature rises (no air conditioning, "
+                "windows closed for secrecy). Knowledge propagates: Madison's Virginia Plan ideas "
+                "spread through exposure events (who heard what, when?), small state delegates "
+                "coordinate defensive strategies, Hamilton's nationalist arguments influence "
+                "fence-sitters. "
+                "\n\n"
+                "Relationships evolve: Madison-Hamilton alliance strengthens, Mason grows skeptical "
+                "of centralization (foreshadowing his refusal to sign), Gerry's contrarian tendencies "
+                "emerge, Sherman's Connecticut compromise thinking begins to form. The abstract "
+                "entities shift: 'Confederation' (the failing system) weakens as delegates lose "
+                "faith, 'Union' (the aspiration) strengthens as consensus builds, Independence Hall "
+                "itself accumulates historical weight. "
+                "\n\n"
+                "This is history compressed to minute-level resolution—every whispered conversation, "
+                "every facial expression during votes, every moment of doubt or inspiration. This "
+                "is Timepoint AI at maximum capacity: 28 entities, 500 timepoints, 16 mechanisms, "
+                "14,000 training examples, $500-1,000 cost, and the future of a nation hanging in "
+                "the balance."
+            ),
+            world_id="constitutional_convention_day1",
+            entities=EntityConfig(
+                count=28,  # 25 Founding Fathers + 3 animistic entities
+                types=["human", "building", "abstract"],
+                initial_resolution=ResolutionLevel.SCENE,  # Start at SCENE, elevate key figures to TRAINED
+                animism_level=3  # Buildings (Independence Hall) and abstract concepts (Confederation, Union)
+            ),
+            timepoints=TimepointConfig(
+                count=500,  # 500 timepoints across 8 hours = ~1 per minute
+                resolution="minute"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.PEARL,  # Strict historical causality
+                enable_counterfactuals=False  # Single timeline only
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json", "markdown"],
+                include_dialogs=True,  # Rich debates and conversations
+                include_relationships=True,  # Dense relationship networks
+                include_knowledge_flow=True,  # Idea propagation tracking
+                export_ml_dataset=True  # Character roleplay training data
+            ),
+            metadata={
+                "simulation_type": "large_scale_stress_test",
+                "historical_event": "Constitutional Convention Opening Day",
+                "date": "1787-05-25",
+                "location": "Pennsylvania State House (Independence Hall), Philadelphia",
+                "duration_hours": 8,
+                "time_range": "10:00 AM - 6:00 PM",
+                "temporal_resolution": "minute_level",
+                "estimated_cost_usd": 750.0,
+                "estimated_training_examples": 14000,
+                "mechanisms_featured": [
+                    "M1_heterogeneous_fidelity",  # Key figures at TRAINED, others at SCENE
+                    "M2_progressive_training",  # 500 timepoints of evolution
+                    "M3_exposure_events",  # Knowledge propagation between delegates
+                    "M4_physics_validation",  # Franklin's gout, energy budgets, physical constraints
+                    "M5_query_resolution",  # Lazy elevation for critical moments
+                    "M6_ttm_tensors",  # Compress all 28 entities
+                    "M7_causal_chains",  # Strict temporal ordering
+                    "M8_embodied_states",  # Franklin's pain, circadian fatigue
+                    "M9_on_demand_generation",  # Clerks, doorkeepers, servants as needed
+                    "M10_scene_entities",  # Room atmosphere, tension, formality
+                    "M11_dialog_synthesis",  # Rich debates, private conversations
+                    # M12_counterfactual_branching - NOT USED (single timeline)
+                    "M13_multi_entity_synthesis",  # Complex relationship evolution
+                    "M14_circadian_patterns",  # Morning energy → evening fatigue
+                    "M15_entity_prospection",  # Delegates model future government
+                    "M16_animistic_entities",  # Independence Hall, Confederation, Union
+                    "M17_modal_causality_pearl"  # Historical realism via strict DAG
+                ],
+                "founding_fathers": [
+                    {"name": "George Washington", "state": "Virginia", "role": "presiding_officer", "age": 55, "key_trait": "leadership_gravitas"},
+                    {"name": "James Madison", "state": "Virginia", "role": "architect", "age": 36, "key_trait": "theoretical_brilliance"},
+                    {"name": "Benjamin Franklin", "state": "Pennsylvania", "role": "elder_statesman", "age": 81, "key_trait": "diplomatic_wisdom", "physical": "severe_gout"},
+                    {"name": "Alexander Hamilton", "state": "New York", "role": "nationalist", "age": 30, "key_trait": "passionate_advocacy"},
+                    {"name": "Gouverneur Morris", "state": "Pennsylvania", "role": "writer", "age": 35, "key_trait": "eloquent_rhetoric"},
+                    {"name": "James Wilson", "state": "Pennsylvania", "role": "legal_scholar", "age": 45, "key_trait": "jurisprudence"},
+                    {"name": "George Mason", "state": "Virginia", "role": "rights_advocate", "age": 62, "key_trait": "individual_liberty"},
+                    {"name": "Edmund Randolph", "state": "Virginia", "role": "virginia_plan_presenter", "age": 34, "key_trait": "political_strategy"},
+                    {"name": "Roger Sherman", "state": "Connecticut", "role": "pragmatist", "age": 66, "key_trait": "practical_compromise"},
+                    {"name": "Robert Morris", "state": "Pennsylvania", "role": "financier", "age": 53, "key_trait": "economic_expertise"},
+                    {"name": "John Rutledge", "state": "South Carolina", "role": "committee_chair", "age": 48, "key_trait": "procedural_mastery"},
+                    {"name": "Charles Pinckney", "state": "South Carolina", "role": "young_voice", "age": 29, "key_trait": "ambitious_innovation"},
+                    {"name": "Elbridge Gerry", "state": "Massachusetts", "role": "skeptic", "age": 43, "key_trait": "contrarian_independence"},
+                    {"name": "Rufus King", "state": "Massachusetts", "role": "federalist", "age": 32, "key_trait": "strong_nationalism"},
+                    {"name": "William Paterson", "state": "New Jersey", "role": "small_state_advocate", "age": 42, "key_trait": "state_equality_defender"},
+                    {"name": "John Dickinson", "state": "Delaware", "role": "penman", "age": 55, "key_trait": "constitutional_drafting"},
+                    {"name": "George Read", "state": "Delaware", "role": "delegate", "age": 54, "key_trait": "careful_deliberation"},
+                    {"name": "Richard Bassett", "state": "Delaware", "role": "delegate", "age": 42, "key_trait": "moderate_voice"},
+                    {"name": "Gunning Bedford Jr.", "state": "Delaware", "role": "firebrand", "age": 40, "key_trait": "passionate_small_state_defense"},
+                    {"name": "John Blair", "state": "Virginia", "role": "jurist", "age": 55, "key_trait": "judicial_temperament"},
+                    {"name": "Hugh Williamson", "state": "North Carolina", "role": "scientist", "age": 52, "key_trait": "empirical_thinking"},
+                    {"name": "William Blount", "state": "North Carolina", "role": "land_speculator", "age": 38, "key_trait": "western_expansion_focus"},
+                    {"name": "Richard Dobbs Spaight", "state": "North Carolina", "role": "delegate", "age": 30, "key_trait": "southern_interests"},
+                    {"name": "Pierce Butler", "state": "South Carolina", "role": "aristocrat", "age": 43, "key_trait": "property_rights_defender"},
+                    {"name": "Charles Cotesworth Pinckney", "state": "South Carolina", "role": "military_hero", "age": 41, "key_trait": "martial_honor"}
+                ],
+                "animistic_entities": [
+                    {"name": "Independence Hall", "type": "building", "age_years": 44, "consciousness": 0.8, "memory": "witnessed_declaration_1776"},
+                    {"name": "Confederation", "type": "abstract", "concept": "articles_of_confederation", "strength": 0.2, "status": "failing"},
+                    {"name": "Union", "type": "abstract", "concept": "unified_nation", "strength": 0.4, "status": "aspiration"}
+                ],
+                "factions": {
+                    "large_states": ["Virginia", "Pennsylvania", "Massachusetts"],
+                    "small_states": ["Delaware", "New Jersey", "Connecticut"],
+                    "southern_states": ["Virginia", "North Carolina", "South Carolina"],
+                    "northern_states": ["Massachusetts", "New York", "Pennsylvania", "Connecticut", "New Jersey"]
+                },
+                "key_relationships": {
+                    "madison_hamilton": "alliance_forming_federalism",
+                    "franklin_washington": "mutual_respect_elder_to_leader",
+                    "madison_mason": "virginia_delegation_tension_centralization",
+                    "small_vs_large_states": "structural_conflict_representation",
+                    "north_vs_south": "sectional_tension_slavery_commerce"
+                },
+                "timeline_structure": [
+                    {"timepoint_range": "0-45", "phase": "roll_call_credentialing", "activity": "establishing_quorum"},
+                    {"timepoint_range": "45-90", "phase": "elect_president", "activity": "washington_unanimous_election"},
+                    {"timepoint_range": "90-180", "phase": "rules_debate", "activity": "secrecy_voting_procedures"},
+                    {"timepoint_range": "180-240", "phase": "lunch_recess", "activity": "private_faction_negotiations"},
+                    {"timepoint_range": "240-400", "phase": "virginia_plan_introduction", "activity": "randolph_presents_outline"},
+                    {"timepoint_range": "400-500", "phase": "initial_reactions", "activity": "delegate_responses_adjournment"}
+                ],
+                "embodied_constraints": {
+                    "franklin": {
+                        "age": 81,
+                        "health_conditions": ["severe_gout", "bladder_stones"],
+                        "mobility": 0.3,
+                        "pain_progression": "increases_with_sitting_duration",
+                        "special_accommodation": "sedan_chair_transport"
+                    },
+                    "circadian_effects": {
+                        "morning_10am_12pm": {"energy": 1.0, "alertness": 0.95, "mood": "optimistic"},
+                        "afternoon_12pm_3pm": {"energy": 0.8, "alertness": 0.85, "mood": "focused"},
+                        "late_afternoon_3pm_5pm": {"energy": 0.6, "alertness": 0.75, "mood": "fatigued"},
+                        "evening_5pm_6pm": {"energy": 0.4, "alertness": 0.65, "mood": "exhausted"}
+                    }
+                },
+                "knowledge_propagation": {
+                    "virginia_plan_spread": "madison_to_virginia_delegation_to_other_states",
+                    "small_state_coordination": "delaware_nj_delegations_defensive_strategy",
+                    "federalist_ideas": "hamilton_influences_key_delegates"
+                }
+            },
+            max_cost_usd=1000.0,  # User acknowledges scale
+            enable_checkpoints=True,  # Critical for long simulation
+            checkpoint_interval=50  # Save every 50 timepoints
+        )
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
         return self.model_dump()
