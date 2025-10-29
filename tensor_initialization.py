@@ -519,16 +519,16 @@ Expected format:
         # Use retry logic (uses default 5s → 10s → 20s delays for rate limit recovery)
         adjustments = _call_llm_with_retry(llm_client, prompt, max_retries=3)
 
-        # Apply adjustments (clamp to reasonable ranges)
-        if "context_adjustments" in adjustments:
+        # Apply adjustments (clamp to reasonable ranges, with None checks)
+        if "context_adjustments" in adjustments and adjustments["context_adjustments"] is not None:
             adj = np.array(adjustments["context_adjustments"][:8])
             context = np.clip(context * adj, 0.0, 2.0)
 
-        if "biology_adjustments" in adjustments:
+        if "biology_adjustments" in adjustments and adjustments["biology_adjustments"] is not None:
             adj = np.array(adjustments["biology_adjustments"][:4])
             biology = np.clip(biology * adj, 0.0, 2.0)
 
-        if "behavior_adjustments" in adjustments:
+        if "behavior_adjustments" in adjustments and adjustments["behavior_adjustments"] is not None:
             adj = np.array(adjustments["behavior_adjustments"][:8])
             behavior = np.clip(behavior * adj, 0.0, 2.0)
 
@@ -590,12 +590,12 @@ Expected format:
         # Use retry logic (uses default 5s → 10s → 20s delays for rate limit recovery)
         refinements = _call_llm_with_retry(llm_client, prompt, max_retries=3)
 
-        # Apply refinements
-        if "context_refinements" in refinements:
+        # Apply refinements (with None checks)
+        if "context_refinements" in refinements and refinements["context_refinements"] is not None:
             ref = np.array(refinements["context_refinements"][:8])
             context = np.clip(context + ref * 0.1, 0.0, 2.0)  # Small additive adjustment
 
-        if "behavior_refinements" in refinements:
+        if "behavior_refinements" in refinements and refinements["behavior_refinements"] is not None:
             ref = np.array(refinements["behavior_refinements"][:8])
             behavior = np.clip(behavior + ref * 0.1, 0.0, 2.0)
 
@@ -650,12 +650,12 @@ Expected format:
             result = _call_llm_with_retry(llm_client, prompt, max_retries=3)
             fixes = result.get("fixes", {})
 
-            # Apply fixes
-            if "context" in fixes and len(fixes["context"]) == 8:
+            # Apply fixes (with None checks to handle malformed responses gracefully)
+            if "context" in fixes and fixes["context"] is not None and len(fixes["context"]) == 8:
                 context = np.where(context == 0, np.array(fixes["context"]), context)
-            if "biology" in fixes and len(fixes["biology"]) == 4:
+            if "biology" in fixes and fixes["biology"] is not None and len(fixes["biology"]) == 4:
                 biology = np.where(biology == 0, np.array(fixes["biology"]), biology)
-            if "behavior" in fixes and len(fixes["behavior"]) == 8:
+            if "behavior" in fixes and fixes["behavior"] is not None and len(fixes["behavior"]) == 8:
                 behavior = np.where(behavior == 0, np.array(fixes["behavior"]), behavior)
 
         except Exception as e:

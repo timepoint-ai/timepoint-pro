@@ -3,7 +3,7 @@ Simulation Configuration Schema with Pydantic Validation
 
 Provides validated configuration for simulation generation with:
 - Entity configuration
-- Timepoint structure
+- Company structure
 - Temporal mode settings
 - Output specifications
 """
@@ -12,6 +12,135 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+import json
+from pathlib import Path
+
+
+# ============================================================================
+# Profile Loading Utilities
+# ============================================================================
+
+def load_founder_profile(archetype_id: str) -> Dict[str, Any]:
+    """
+    Load a founder archetype profile from JSON.
+
+    Args:
+        archetype_id: The archetype identifier (e.g., "charismatic_visionary")
+
+    Returns:
+        Dictionary containing the full profile data
+
+    Raises:
+        FileNotFoundError: If profile doesn't exist
+        ValueError: If profile JSON is invalid
+
+    Example:
+        profile = load_founder_profile("charismatic_visionary")
+        traits = profile["traits"]
+        behaviors = profile["natural_behaviors"]
+    """
+    profiles_dir = Path(__file__).parent / "profiles" / "founder_archetypes"
+    profile_path = profiles_dir / f"{archetype_id}.json"
+
+    if not profile_path.exists():
+        available = list_founder_archetypes()
+        raise FileNotFoundError(
+            f"Profile '{archetype_id}' not found. Available: {available}"
+        )
+
+    try:
+        with open(profile_path, 'r') as f:
+            profile = json.load(f)
+        return profile
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in profile '{archetype_id}': {e}")
+
+
+def list_founder_archetypes() -> List[str]:
+    """
+    List all available founder archetype profile IDs.
+
+    Returns:
+        List of archetype IDs (without .json extension)
+
+    Example:
+        archetypes = list_founder_archetypes()
+        # ['charismatic_visionary', 'demanding_genius', ...]
+    """
+    profiles_dir = Path(__file__).parent / "profiles" / "founder_archetypes"
+
+    if not profiles_dir.exists():
+        return []
+
+    return [
+        p.stem for p in profiles_dir.glob("*.json")
+        if p.is_file()
+    ]
+
+
+def load_economic_scenario(scenario_id: str) -> Dict[str, Any]:
+    """
+    Load an economic scenario configuration from JSON.
+
+    Args:
+        scenario_id: The scenario identifier (e.g., "bull_market_2025")
+
+    Returns:
+        Dictionary containing the full scenario data
+
+    Raises:
+        FileNotFoundError: If scenarios file doesn't exist
+        ValueError: If scenario ID not found or JSON invalid
+
+    Example:
+        scenario = load_economic_scenario("bull_market_2025")
+        params = scenario["parameters"]
+        funding_availability = params["funding_availability"]
+    """
+    scenarios_path = Path(__file__).parent / "profiles" / "economic_scenarios.json"
+
+    if not scenarios_path.exists():
+        raise FileNotFoundError(
+            f"Economic scenarios file not found at {scenarios_path}"
+        )
+
+    try:
+        with open(scenarios_path, 'r') as f:
+            all_scenarios = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in economic scenarios file: {e}")
+
+    if scenario_id not in all_scenarios:
+        available = list(all_scenarios.keys())
+        raise ValueError(
+            f"Scenario '{scenario_id}' not found. Available: {available}"
+        )
+
+    return all_scenarios[scenario_id]
+
+
+def list_economic_scenarios() -> List[str]:
+    """
+    List all available economic scenario IDs.
+
+    Returns:
+        List of scenario IDs
+
+    Example:
+        scenarios = list_economic_scenarios()
+        # ['bull_market_2025', 'bear_market_2023', ...]
+    """
+    scenarios_path = Path(__file__).parent / "profiles" / "economic_scenarios.json"
+
+    if not scenarios_path.exists():
+        return []
+
+    try:
+        with open(scenarios_path, 'r') as f:
+            all_scenarios = json.load(f)
+        return list(all_scenarios.keys())
+    except (json.JSONDecodeError, OSError):
+        return []
 
 
 class ResolutionLevel(str, Enum):
@@ -55,7 +184,7 @@ class EntityConfig(BaseModel):
         return v
 
 
-class TimepointConfig(BaseModel):
+class CompanyConfig(BaseModel):
     """Configuration for timepoint structure"""
     count: int = Field(ge=1, le=1000, default=1, description="Number of timepoints to generate")
     start_time: Optional[datetime] = Field(
@@ -193,7 +322,7 @@ class SimulationConfig(BaseModel):
             scenario_description="Simulate the Constitutional Convention of 1787",
             world_id="constitutional_convention",
             entities=EntityConfig(count=10, types=["human"]),
-            timepoints=TimepointConfig(count=5, resolution="day"),
+            timepoints=CompanyConfig(count=5, resolution="day"),
             temporal=TemporalConfig(mode=TemporalMode.PEARL),
             outputs=OutputConfig(formats=["json", "markdown"])
         )
@@ -211,9 +340,9 @@ class SimulationConfig(BaseModel):
         default_factory=lambda: EntityConfig(),
         description="Entity generation configuration"
     )
-    timepoints: TimepointConfig = Field(
-        default_factory=lambda: TimepointConfig(),
-        description="Timepoint structure configuration"
+    timepoints: CompanyConfig = Field(
+        default_factory=lambda: CompanyConfig(),
+        description="Company structure configuration"
     )
     temporal: TemporalConfig = Field(
         default_factory=lambda: TemporalConfig(),
@@ -232,6 +361,16 @@ class SimulationConfig(BaseModel):
     metadata: Dict[str, Any] = Field(
         default_factory=dict,
         description="Additional metadata for this simulation"
+    )
+
+    # Company Corporate Analysis - Profile System
+    economic_scenario: Optional[str] = Field(
+        default=None,
+        description="Economic scenario ID for corporate simulations (e.g., 'bull_market_2025')"
+    )
+    founder_profiles: Optional[List[str]] = Field(
+        default=None,
+        description="List of founder archetype IDs for corporate simulations (e.g., ['charismatic_visionary', 'operational_executor'])"
     )
 
     # Execution settings
@@ -277,7 +416,7 @@ class SimulationConfig(BaseModel):
             scenario_description="Simulate a tech startup board meeting where CEO proposes an acquisition",
             world_id="board_meeting_example",
             entities=EntityConfig(count=5, types=["human"]),
-            timepoints=TimepointConfig(count=3, resolution="hour"),
+            timepoints=CompanyConfig(count=3, resolution="hour"),
             temporal=TemporalConfig(mode=TemporalMode.PEARL),
             outputs=OutputConfig(
                 formats=["json", "markdown"],
@@ -293,7 +432,7 @@ class SimulationConfig(BaseModel):
             scenario_description="Simulate the 1790 Compromise Dinner between Jefferson, Hamilton, and Madison",
             world_id="jefferson_dinner",
             entities=EntityConfig(count=3, types=["human"]),
-            timepoints=TimepointConfig(
+            timepoints=CompanyConfig(
                 count=1,
                 before_count=2,
                 after_count=2,
@@ -315,7 +454,7 @@ class SimulationConfig(BaseModel):
             scenario_description="Generate variations of a negotiation scenario",
             world_id="negotiation_variations",
             entities=EntityConfig(count=4, types=["human"]),
-            timepoints=TimepointConfig(count=2, resolution="hour"),
+            timepoints=CompanyConfig(count=2, resolution="hour"),
             temporal=TemporalConfig(mode=TemporalMode.PEARL),
             outputs=OutputConfig(
                 formats=["jsonl"],
@@ -364,7 +503,7 @@ class SimulationConfig(BaseModel):
                 initial_resolution=ResolutionLevel.SCENE,
                 animism_level=3  # Include buildings (221B Baker Street) and abstract concepts (London fog)
             ),
-            timepoints=TimepointConfig(
+            timepoints=CompanyConfig(
                 count=1,  # Critical moment: revelation of the killer's identity
                 before_count=50,  # 50 timepoints of investigation leading up
                 after_count=50,  # 50 timepoints of aftermath, trial, reflection
@@ -438,7 +577,7 @@ class SimulationConfig(BaseModel):
                 initial_resolution=ResolutionLevel.DIALOG,
                 animism_level=2  # Camden House (the empty house) as entity
             ),
-            timepoints=TimepointConfig(
+            timepoints=CompanyConfig(
                 count=1,  # Critical moment: detective reveals survival
                 before_count=40,  # Flashbacks to survival period
                 after_count=40,  # Present-day investigation
@@ -498,7 +637,7 @@ class SimulationConfig(BaseModel):
                 initial_resolution=ResolutionLevel.TRAINED,  # High fidelity for strategic modeling
                 animism_level=3  # Fate/destiny as abstract entity influencing outcomes
             ),
-            timepoints=TimepointConfig(
+            timepoints=CompanyConfig(
                 count=1,  # Critical branching moment: the confrontation
                 before_count=30,  # Lead-up: travel to Switzerland, preparations, final letters
                 after_count=30,  # Aftermath across multiple branches
@@ -566,7 +705,7 @@ class SimulationConfig(BaseModel):
                 initial_resolution=ResolutionLevel.DIALOG,
                 animism_level=4  # Moor, hound, Baskerville Hall as active forces
             ),
-            timepoints=TimepointConfig(
+            timepoints=CompanyConfig(
                 count=15,
                 resolution="hour"
             ),
@@ -634,7 +773,7 @@ class SimulationConfig(BaseModel):
                 initial_resolution=ResolutionLevel.TRAINED,  # High fidelity for complex temporal reasoning
                 animism_level=5  # Time itself as entity, fate, prophecy
             ),
-            timepoints=TimepointConfig(
+            timepoints=CompanyConfig(
                 count=12,  # 3 loops × 4 events each
                 resolution="day"
             ),
@@ -701,7 +840,7 @@ class SimulationConfig(BaseModel):
                 initial_resolution=ResolutionLevel.TRAINED,  # High detail for body-mind coupling
                 animism_level=0  # Focus on human embodiment
             ),
-            timepoints=TimepointConfig(
+            timepoints=CompanyConfig(
                 count=3,  # 22:00, 02:00, 06:00 - circadian transitions
                 resolution="hour"
             ),
@@ -759,7 +898,7 @@ class SimulationConfig(BaseModel):
                 initial_resolution=ResolutionLevel.TRAINED,
                 animism_level=6  # Maximum animism - all types have full agency
             ),
-            timepoints=TimepointConfig(
+            timepoints=CompanyConfig(
                 count=1,  # Single ritual moment
                 resolution="minute"
             ),
@@ -813,7 +952,7 @@ class SimulationConfig(BaseModel):
                 initial_resolution=ResolutionLevel.TRAINED,  # High detail for cognitive modeling
                 animism_level=3  # Mild animism for London city as informant
             ),
-            timepoints=TimepointConfig(
+            timepoints=CompanyConfig(
                 count=2,  # Present + 24h prospective future
                 resolution="hour"
             ),
@@ -918,7 +1057,7 @@ class SimulationConfig(BaseModel):
                 "\n\n"
                 "This is history compressed to minute-level resolution—every whispered conversation, "
                 "every facial expression during votes, every moment of doubt or inspiration. This "
-                "is Timepoint AI at maximum capacity: 28 entities, 500 timepoints, 16 mechanisms, "
+                "is Company AI at maximum capacity: 28 entities, 500 timepoints, 16 mechanisms, "
                 "14,000 training examples, $500-1,000 cost, and the future of a nation hanging in "
                 "the balance."
             ),
@@ -929,7 +1068,7 @@ class SimulationConfig(BaseModel):
                 initial_resolution=ResolutionLevel.SCENE,  # Start at SCENE, elevate key figures to TRAINED
                 animism_level=3  # Buildings (Independence Hall) and abstract concepts (Confederation, Union)
             ),
-            timepoints=TimepointConfig(
+            timepoints=CompanyConfig(
                 count=500,  # 500 timepoints across 8 hours = ~1 per minute
                 resolution="minute"
             ),
@@ -1050,6 +1189,1940 @@ class SimulationConfig(BaseModel):
             max_cost_usd=1000.0,  # User acknowledges scale
             enable_checkpoints=True,  # Critical for long simulation
             checkpoint_interval=50  # Save every 50 timepoints
+        )
+
+    @classmethod
+    def example_vc_pitch_pearl(cls) -> "SimulationConfig":
+        """
+        Linear VC pitch demonstrating standard causality and negotiation dynamics.
+
+        Company Startup Pitch: CEO and COO pitch Company to Sand Hill Road VC.
+        Standard pitch progression: intro → product demo → traction → competitive moat → ask.
+        VC challenges on market timing, technical risk, go-to-market strategy. Demonstrates
+        M7 (causal chains), M11 (dialog synthesis), M15 (VC prospection - modeling startup risk).
+        """
+        return cls(
+            scenario_description=(
+                "Pre-seed pitch meeting at prominent Silicon Valley VC firm. Founder A (CEO, former "
+                "Stanford AI researcher) and Founder B (COO, ex-OpenAI product lead) pitch "
+                "Company: a temporal knowledge graph system enabling 95% cost reduction "
+                "for AI training data generation through adaptive fidelity and modal causality. "
+                "\n\n"
+                "The pitch deck emphasizes: (1) Problem: LLM training data costs $500K-5M per dataset, "
+                "(2) Solution: Company generates queryable temporal simulations with tensor compression "
+                "achieving 200 tokens vs 50K tokens, (3) Traction: 3 design partners testing (game studio, "
+                "VR company, education tech), (4) Market: $25B AI training data market growing 40% YoY, "
+                "(5) Team: Founder A published 12 papers on temporal reasoning, Founder B scaled OpenAI's data "
+                "pipeline to 10M users, (6) Ask: $2M pre-seed at $12M cap for 12 months runway. "
+                "\n\n"
+                "Jennifer Park (VC Partner, enterprise AI focused) leads the meeting with associate "
+                "David Kim. Jennifer immediately probes: 'Why now? OpenAI and Anthropic generate their "
+                "own training data.' Founder A pivots to horizontal applications: character AI, simulation "
+                "games, educational content. Jennifer counters: 'What's your moat against big labs?' "
+                "Founder B highlights the 17 mechanisms (animistic entities, modal causality, prospection) "
+                "as defensible IP. David asks about unit economics: 'If customers pay $5K/dataset and "
+                "your cost is $250, that's 95% margin but low ACV—how do you scale?' Founder A explains "
+                "vertical expansion strategy. "
+                "\n\n"
+                "Track 5 timepoints: (1) Pitch opening + product demo, (2) Traction deep-dive, "
+                "(3) Competitive moat discussion, (4) Business model questions, (5) Closing ask and "
+                "next steps. Demonstrates M11 (rich negotiation dialog), M15 (VC prospection: Jennifer "
+                "models probability of Series A success), M7 (causal chains: traction → credibility → "
+                "valuation leverage), and M13 (relationship evolution: skepticism → cautious interest)."
+            ),
+            world_id="vc_pitch_pearl",
+            entities=EntityConfig(
+                count=4,  # CEO + COO + VC Partner + VC Associate
+                types=["human"],
+                initial_resolution=ResolutionLevel.DIALOG,  # High detail for pitch dynamics
+                animism_level=0  # Pure human negotiation
+            ),
+            timepoints=CompanyConfig(
+                count=5,  # Standard pitch flow: intro, traction, moat, business, ask
+                resolution="minute"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.PEARL  # Linear causality
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json"],
+                include_dialogs=True,  # Key mechanism: negotiation dialog
+                include_relationships=True,  # Founder-VC trust evolution
+                export_ml_dataset=True  # Training data for pitch conversations
+            ),
+            metadata={
+                "pitch_type": "pre_seed",
+                "ask_amount_usd": 2000000,
+                "pre_money_valuation_usd": 10000000,
+                "mechanisms_featured": [
+                    "M7_causal_chains_pitch_flow",
+                    "M11_dialog_synthesis_negotiation",
+                    "M15_prospection_vc_risk_modeling",
+                    "M13_relationship_evolution"
+                ],
+                "pitch_deck_highlights": {
+                    "problem": "LLM training data costs $500K-5M per dataset",
+                    "solution": "95% cost reduction via adaptive fidelity + tensor compression",
+                    "traction": "3 design partners (game studio, VR, edtech)",
+                    "market_size_usd": 25000000000,
+                    "team": "Founder A (Stanford AI PhD, 12 papers), Founder B (ex-OpenAI)",
+                    "runway_months": 12
+                },
+                "vc_concerns": [
+                    "market_timing_why_now",
+                    "competitive_moat_vs_big_labs",
+                    "unit_economics_low_acv",
+                    "technical_risk_17_mechanisms",
+                    "go_to_market_strategy"
+                ]
+            }
+        )
+
+    @classmethod
+    def example_vc_pitch_roadshow(cls) -> "SimulationConfig":
+        """
+        Multi-meeting pitch sequence demonstrating narrative evolution across audiences.
+
+        Company Pitch Roadshow: Founders pitch to 3 different VCs (LA entertainment, SF enterprise, SF consumer)
+        adapting narrative by audience. LA VC hears content generation story, SF enterprise hears
+        vertical SaaS story, SF consumer hears developer tools story. Demonstrates M3 (knowledge
+        propagation), M7 (causal chains), M10 (scene atmosphere), M13 (multi-entity synthesis).
+        """
+        return cls(
+            scenario_description=(
+                "Three-day pitch roadshow across California. Monday in Los Angeles: founders meet "
+                "Alex Martinez at Maverick Ventures (entertainment tech focused). Founder A emphasizes "
+                "Company's content generation capabilities: 'Game studios spend $2M on dialog trees. "
+                "We generate branching narratives with modal causality for $100K.' Alex is intrigued "
+                "by the animistic entities (M16) for NPC AI in games. "
+                "\n\n"
+                "Wednesday in San Francisco: first meeting with Jennifer Park at Sequoia (enterprise "
+                "AI focused). Founder B leads: 'Enterprises need synthetic training data for proprietary "
+                "LLMs. We enable vertical fine-tuning datasets at 95% cost reduction.' Jennifer asks "
+                "about SOC2, enterprise SLAs, and sales cycle. Founder A explains ANDOS layer-by-layer "
+                "training for deterministic outputs enterprises require. "
+                "\n\n"
+                "Thursday in San Francisco: meeting with David Chen at a16z (developer tools focused). "
+                "Technical deep-dive: Founder A walks through the 17 mechanisms, query engine, fault tolerance. "
+                "David gets excited about the developer experience: 'This is Terraform for simulation.' "
+                "Founders realize they found the right positioning. "
+                "\n\n"
+                "Track 7 timepoints: (1) LA pitch with Alex, (2) Travel to SF / debrief, (3) Sequoia "
+                "pitch with Jennifer, (4) Post-meeting founder discussion on positioning, (5) a16z pitch "
+                "with David, (6) Founder synthesis: which narrative resonated?, (7) Follow-up strategy. "
+                "Demonstrates M3 (knowledge accumulation: each meeting informs the next), M13 (multi-entity "
+                "synthesis: three VCs with different thesis lenses), M10 (scene atmospheres: LA creative "
+                "vs SF analytical), M7 (causal chains: positioning evolution across meetings)."
+            ),
+            world_id="vc_pitch_roadshow",
+            entities=EntityConfig(
+                count=5,  # CEO + COO + LA_VC + SF_Enterprise_VC + SF_Developer_VC
+                types=["human"],
+                initial_resolution=ResolutionLevel.DIALOG,
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=7,  # 3 meetings + transitions + synthesis
+                resolution="hour"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.PEARL  # Sequential meetings with learning
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json", "markdown"],
+                include_dialogs=True,
+                include_relationships=True,
+                include_knowledge_flow=True,  # Key: track narrative evolution
+                export_ml_dataset=True
+            ),
+            metadata={
+                "pitch_type": "roadshow_pre_seed",
+                "vc_firms": [
+                    {"name": "Maverick Ventures", "location": "LA", "focus": "entertainment_tech", "partner": "Alex Martinez"},
+                    {"name": "Sequoia Capital", "location": "SF", "focus": "enterprise_ai", "partner": "Jennifer Park"},
+                    {"name": "Andreessen Horowitz", "location": "SF", "focus": "developer_tools", "partner": "David Chen"}
+                ],
+                "narrative_evolution": {
+                    "la_angle": "content_generation_for_games",
+                    "sf_enterprise_angle": "vertical_saas_training_data",
+                    "sf_developer_angle": "terraform_for_simulation"
+                },
+                "mechanisms_featured": [
+                    "M3_knowledge_propagation_across_meetings",
+                    "M7_causal_chains_learning_curve",
+                    "M10_scene_atmosphere_la_vs_sf",
+                    "M11_dialog_synthesis_pitch_variations",
+                    "M13_multi_entity_synthesis_vc_perspectives"
+                ],
+                "key_insight": "Developer tools positioning resonated most (David @ a16z)"
+            }
+        )
+
+    @classmethod
+    def example_vc_pitch_branching(cls) -> "SimulationConfig":
+        """
+        Branching pitch outcomes demonstrating counterfactual negotiation paths.
+
+        Company Pitch Branching: Critical moment when VC asks 'What's your traction?' Branches
+        into 4 timelines: (A) Strong answer → term sheet, (B) Weak answer → pass, (C) Honest answer →
+        strategic pivot, (D) Competitor announces funding → FOMO term sheet. Demonstrates M12
+        (counterfactual branching), M15 (both sides modeling outcomes), M8 (founder stress), M17 (BRANCHING mode).
+        """
+        return cls(
+            scenario_description=(
+                "High-stakes pitch meeting at tier-1 VC. Founder A and Founder B have 45 minutes "
+                "to convince Jennifer Park (Partner) and David Kim (Associate) to invest $2M in Company. "
+                "The pitch goes well until minute 30, when Jennifer leans forward and asks the critical question: "
+                "'Your tech is impressive, but I need to see traction. What's your MRR?' "
+                "\n\n"
+                "This is the branching point. The timeline splits into 4 distinct futures: "
+                "\n\n"
+                "**Branch A (Strong Traction)**: Founder A confidently answers '$50K MRR across 5 enterprise "
+                "customers, 300% month-over-month growth.' Jennifer's eyes light up. She asks about unit "
+                "economics, customer concentration, retention. Founder A has the data. David pulls up the model: "
+                "'If they maintain this growth, they hit $1M ARR in 6 months.' Jennifer offers a term sheet "
+                "on the spot: $2M at $15M post. They close in 2 weeks. "
+                "\n\n"
+                "**Branch B (Weak Traction)**: Founder A hesitates. 'We're pre-revenue, focused on product-market "
+                "fit.' Jennifer's body language shifts. 'So no paying customers?' Founder B tries to recover: "
+                "'We have 20 beta users giving feedback.' Jennifer: 'Call us when you have $10K MRR. Too early "
+                "for us.' The meeting ends cordially but the deal is dead. They leave with polite rejection. "
+                "\n\n"
+                "**Branch C (Honest Pivot)**: Founder A takes a breath. 'We have 3 pilots generating qualitative "
+                "feedback but no revenue yet. However, what we learned is fascinating...' She pivots to the "
+                "design partner insights: game studios want NPC AI, VR companies want scenario generation. "
+                "Jennifer appreciates the honesty and strategic thinking. 'This sounds more like a developer "
+                "platform than vertical SaaS. Have you considered positioning as Stripe for simulations?' This "
+                "opens a new strategic conversation. Jennifer offers $1.5M at $10M post with milestone-based "
+                "second tranche. They negotiate for 3 weeks. "
+                "\n\n"
+                "**Branch D (Competitive FOMO)**: As Founder A starts to answer, David's phone buzzes. He glances "
+                "down, then whispers to Jennifer. She reads: 'Competitor just raised $10M Series A from Sequoia "
+                "for similar simulation tech.' Jennifer's entire demeanor changes. Suddenly the question isn't "
+                "'Should we invest?' but 'How do we move fast enough to win this deal?' She offers $2.5M at "
+                "$15M post, 'take it or leave it in 48 hours.' The founders feel the power dynamic invert. "
+                "\n\n"
+                "Track 12 timepoints: 3 before critical question + 1 branching moment + 8 after (2 per branch). "
+                "Demonstrates M12 (counterfactual branching: 4 distinct futures from one decision), M15 "
+                "(prospection: both sides modeling outcomes), M8 (embodied stress: Founder A's heart rate, Founder B's "
+                "sweating affecting pitch performance), M17 (BRANCHING mode causality), M11 (dialog variations "
+                "across branches)."
+            ),
+            world_id="vc_pitch_branching",
+            entities=EntityConfig(
+                count=5,  # CEO + COO + VC_Partner + VC_Associate + Market_Timing (abstract entity)
+                types=["human", "abstract"],
+                initial_resolution=ResolutionLevel.TRAINED,  # High detail for strategic modeling
+                animism_level=2  # Market timing as abstract entity representing competitive pressure
+            ),
+            timepoints=CompanyConfig(
+                count=1,  # Critical branching moment: traction question
+                before_count=3,  # Pitch setup
+                after_count=8,  # 2 timepoints per branch (4 branches)
+                resolution="minute"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # M17: Many-worlds causality
+                enable_counterfactuals=True  # M12: Explicit counterfactual modeling
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json"],
+                include_dialogs=True,
+                include_relationships=True,
+                include_knowledge_flow=True,
+                export_ml_dataset=True
+            ),
+            metadata={
+                "pitch_type": "branching_outcomes",
+                "critical_question": "What is your traction / MRR?",
+                "branches": [
+                    {
+                        "id": "branch_a_strong",
+                        "answer": "$50K MRR, 300% MoM growth",
+                        "outcome": "term_sheet_$2M_at_$15M_post",
+                        "probability": 0.15,
+                        "close_time_weeks": 2
+                    },
+                    {
+                        "id": "branch_b_weak",
+                        "answer": "Pre-revenue, 20 beta users",
+                        "outcome": "polite_pass_too_early",
+                        "probability": 0.40,
+                        "close_time_weeks": 0
+                    },
+                    {
+                        "id": "branch_c_honest_pivot",
+                        "answer": "3 pilots, pivoting to developer platform",
+                        "outcome": "term_sheet_$1.5M_at_$10M_post_with_milestones",
+                        "probability": 0.30,
+                        "close_time_weeks": 3
+                    },
+                    {
+                        "id": "branch_d_competitive_fomo",
+                        "answer": "Mid-answer, competitor raises $10M",
+                        "outcome": "aggressive_term_sheet_$2.5M_at_$15M_post_48h_expiry",
+                        "probability": 0.15,
+                        "close_time_weeks": 1
+                    }
+                ],
+                "mechanisms_featured": [
+                    "M12_counterfactual_branching_negotiation",
+                    "M15_prospection_both_sides_modeling",
+                    "M8_embodied_stress_pitch_performance",
+                    "M17_modal_causality_branching",
+                    "M11_dialog_variations_across_branches",
+                    "M13_relationship_outcomes_trust_vs_fomo"
+                ],
+                "stress_markers": {
+                    "sarah_ceo": {"heart_rate": 110, "cortisol_level": "elevated", "decision_quality_modifier": 0.85},
+                    "marcus_coo": {"perspiration": "visible", "voice_steadiness": 0.75}
+                }
+            }
+        )
+
+    @classmethod
+    def example_vc_pitch_strategies(cls) -> "SimulationConfig":
+        """
+        Alternate pitch strategies demonstrating how framing affects outcomes.
+
+        Company Pitch Strategies: Same VC meeting, different founder strategies across parallel timelines.
+        Timeline A: Technical pitch (ML/AI innovation), Timeline B: Business pitch (market/ROI),
+        Timeline C: Vision pitch (category creation). Demonstrates M12 (alternate histories),
+        M10 (scene analysis), M15 (VC judgment evaluation), M17 (directorial comparison).
+        """
+        return cls(
+            scenario_description=(
+                "Parallel timelines exploring pitch strategy selection. In each timeline, Founder A "
+                "(CEO) and Founder B (COO) pitch Company to Jennifer Park (VC Partner) and "
+                "David Kim (Associate), but their strategic framing varies dramatically: "
+                "\n\n"
+                "**Timeline A (Technical Pitch)**: Founder A leads with the architecture. 'We've solved a "
+                "fundamental problem in AI: tensor compression for temporal knowledge graphs. Our TTM "
+                "mechanism achieves 97% compression ratio—50,000 tokens down to 200—while preserving "
+                "queryability. No one else has modal causality with BRANCHING and CYCLICAL modes.' She "
+                "walks through the 17 mechanisms, ANDOS layer-by-layer training, fault tolerance architecture. "
+                "David (technical associate) is impressed: 'This is legitimate research.' But Jennifer "
+                "pushes back: 'I invest in businesses, not papers. Who pays for this?' The pitch feels "
+                "academic. Jennifer is skeptical about commercial viability. "
+                "\n\n"
+                "**Timeline B (Business Pitch)**: Founder B leads with market size. 'AI training data is a "
+                "$25B market growing 40% annually. Our customers—game studios, VR companies, edtech—spend "
+                "$2M on content generation. We deliver the same outcome for $100K. That's 95% cost reduction "
+                "with 20x margin. Unit economics: $5K ACV, $250 COGS, 24-month payback. We're targeting "
+                "$10M ARR in 18 months.' He shows the Excel model. Jennifer loves the numbers: 'Now we're "
+                "talking. What's your GTM motion?' They spend 30 minutes on sales strategy. Jennifer is "
+                "excited about the business model but wants to see traction first. "
+                "\n\n"
+                "**Timeline C (Vision Pitch)**: Founder A paints the future. 'Every company will need temporal AI. "
+                "Today, LLMs are stateless—they don't understand causality, time, or consequences. We're "
+                "creating a new category: Temporal AI Infrastructure. Think of us as Snowflake for simulation, "
+                "or Databricks for causal reasoning. In 5 years, every enterprise will run temporal simulations "
+                "for planning, training, compliance. We're not just a tool; we're the foundation layer for the "
+                "next generation of AI that understands *when* things happen and *why*.' Jennifer leans in: "
+                "'That's a generational bet. Do you have the team to build category-defining infrastructure?' "
+                "The pitch becomes about founder ambition and vision scale. "
+                "\n\n"
+                "Track 9 timepoints: 2 before pitch start + 1 pitch beginning + 6 divergent (2 per timeline). "
+                "Demonstrates M12 (alternate histories: same meeting, different strategies), M10 (scene "
+                "atmosphere analysis: technical vs business vs visionary mood), M15 (VC prospection: Jennifer "
+                "evaluates founder judgment through strategy choice), M17 (directorial mode for dramatic "
+                "comparison of outcomes)."
+            ),
+            world_id="vc_pitch_strategies",
+            entities=EntityConfig(
+                count=4,  # CEO + COO + VC_Partner + VC_Associate
+                types=["human"],
+                initial_resolution=ResolutionLevel.TRAINED,
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=1,  # Pitch strategy selection moment
+                before_count=2,  # Meeting setup
+                after_count=6,  # 2 timepoints per timeline (3 timelines)
+                resolution="minute"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # Parallel strategy timelines
+                enable_counterfactuals=True
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json"],
+                include_dialogs=True,
+                include_relationships=True,
+                export_ml_dataset=True  # Training data for strategic pitch framing
+            ),
+            metadata={
+                "pitch_type": "strategy_comparison",
+                "timelines": [
+                    {
+                        "id": "timeline_a_technical",
+                        "lead": "sarah_ceo",
+                        "focus": "ml_ai_innovation_17_mechanisms",
+                        "vc_response": "impressed_technically_skeptical_commercially",
+                        "outcome": "request_for_more_traction",
+                        "probability_of_term_sheet": 0.25
+                    },
+                    {
+                        "id": "timeline_b_business",
+                        "lead": "marcus_coo",
+                        "focus": "market_size_unit_economics_gtm",
+                        "vc_response": "excited_about_numbers_wants_validation",
+                        "outcome": "conditional_yes_pending_first_customers",
+                        "probability_of_term_sheet": 0.65
+                    },
+                    {
+                        "id": "timeline_c_vision",
+                        "lead": "sarah_ceo",
+                        "focus": "temporal_ai_category_creation",
+                        "vc_response": "intrigued_by_ambition_evaluating_founder_caliber",
+                        "outcome": "long_discussion_on_team_and_roadmap",
+                        "probability_of_term_sheet": 0.45
+                    }
+                ],
+                "mechanisms_featured": [
+                    "M12_alternate_histories_strategy_selection",
+                    "M10_scene_atmosphere_technical_vs_business_vs_vision",
+                    "M11_dialog_synthesis_strategic_framing",
+                    "M15_prospection_vc_evaluates_founder_judgment",
+                    "M17_modal_causality_directorial_comparison"
+                ],
+                "strategic_insight": "Business pitch (timeline B) yields highest term sheet probability (65%)",
+                "meta_lesson": "VCs invest in businesses, not technology or vision alone—need market validation"
+            }
+        )
+
+    @classmethod
+    def timepoint_ipo_reverse_engineering(cls) -> "SimulationConfig":
+        """
+        Reverse-engineer Company's IPO path: work backwards from 2028 $2B IPO to 2024 formation.
+
+        Company IPO 2028: $2B valuation on NASDAQ. Reverse-engineer the corporate formation
+        decisions that led here. Compare two co-founder structures: (A) CEO 55% / President 35%
+        vs (B) CEO 50% / CTO 40%. Track backwards through Series C → B → A → Seed → Formation.
+        Demonstrates M12 (branching histories), M15 (prospection in reverse), M7 (causal chains).
+        """
+        return cls(
+            scenario_description=(
+                "**November 2028: Company IPO Day** - Founder A (CEO) rings the NASDAQ opening bell. "
+                "TempDB goes public at $2B valuation. 95% gross margin, $150M ARR, 40% YoY growth. "
+                "Wall Street analysts call it 'the Bloomberg Terminal of AI simulation.' But how did they get here? "
+                "\n\n"
+                "**Reverse-engineer the journey backwards in time**: This simulation runs in reverse chronology, "
+                "exploring how corporate formation decisions at each funding stage set up future success. Two parallel "
+                "timelines branch from formation (October 2024): "
+                "\n\n"
+                "**Timeline A (CEO/President Structure)**: Founder A CEO 55%, Founder B President 35%, "
+                "advisors/ESOP 10%. Standard 4-year vesting with 1-year cliff. At Seed (Feb 2025), they raise $2M "
+                "at $10M post. Founder B as President handles operations, Founder A focuses on product and vision. By "
+                "Series A (Dec 2025), revenue is $1M ARR—strong for 14 months—they raise $15M at $60M post. "
+                "Founder B's operational excellence (GTM, sales systems) drives predictable growth. Series B (Oct 2026): "
+                "$8M ARR, raise $50M at $250M post. Series C (June 2027): $40M ARR, raise $150M at $800M pre. "
+                "IPO (Nov 2028): $150M ARR, $2B market cap. Founder A's equity dilutes to 32%, Founder B to 20%. Both "
+                "paper billionaires. The President role gave Founder B enough authority to scale operations while "
+                "preserving Founder A's CEO decision rights. "
+                "\n\n"
+                "**Timeline B (CEO/CTO Structure)**: Founder A CEO 50%, Founder B CTO 40%, advisors/ESOP 10%. "
+                "Same vesting. At Seed (Feb 2025), they raise $1.5M at $8M post—slightly worse terms because "
+                "investors worry about lack of dedicated commercial leader. Founder B as CTO is brilliant on product "
+                "but Founder A has to handle both vision AND operations. By Series A (June 2026, 6 months later), "
+                "revenue is only $500K ARR—slower GTM execution—they raise $12M at $40M post (lower valuation). "
+                "Founder A is stretched thin. They hire a VP Sales who takes 2% equity. Series B (Aug 2027): $5M ARR, "
+                "raise $40M at $180M post. Series C (Feb 2028): $25M ARR, raise $100M at $500M pre. IPO (May 2029, "
+                "6 months delayed): $100M ARR, $1.2B market cap. Founder A's equity dilutes to 27%, Founder B to 22%. "
+                "The CTO structure worked technically but lacked operational muscle in early stages, leading to "
+                "slower growth and more dilution. "
+                "\n\n"
+                "Track 18 timepoints in reverse: IPO (t0) → Series C close (t-3) → Series C negotiations (t-6) → "
+                "Series B close (t-9) → Series B negotiations (t-12) → Series A close (t-15) → Series A negotiations "
+                "(t-18) → Seed close (t-21) → Formation & equity split decision (t-24). Each stage shows how "
+                "earlier equity and role decisions compound. Demonstrates M12 (two timelines), M15 (founders in "
+                "2028 looking back at decisions), M7 (causal chains: role → execution → valuation → dilution), "
+                "M13 (relationship evolution), M11 (board negotiations at each stage)."
+            ),
+            world_id="timepoint_ipo_reverse",
+            entities=EntityConfig(
+                count=6,  # Founder A + Founder B + Seed VC + Series A VC + Series B VC + Series C VC
+                types=["human"],
+                initial_resolution=ResolutionLevel.TRAINED,
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=18,  # Reverse chronology through 6 funding stages × 3 timepoints each
+                resolution="month"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # Two timelines: CEO/President vs CEO/CTO
+                enable_counterfactuals=True
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json", "markdown"],
+                include_dialogs=True,
+                include_relationships=True,
+                include_knowledge_flow=True,
+                export_ml_dataset=True
+            ),
+            metadata={
+                "analysis_type": "reverse_engineering_ipo_path",
+                "timelines": [
+                    {
+                        "id": "timeline_a_ceo_president",
+                        "role_structure": "CEO + President (Operational Leader)",
+                        "hypothesis": "President role provides operational muscle for faster scaling and better valuations"
+                    },
+                    {
+                        "id": "timeline_b_ceo_cto",
+                        "role_structure": "CEO + CTO (Technical Leader)",
+                        "hypothesis": "CTO structure is technically strong but lacks operational focus, leading to slower GTM"
+                    }
+                ],
+                "key_questions": [
+                    "How do formation equity splits affect final ownership post-IPO?",
+                    "What role structures enable faster operational scaling?",
+                    "How does early-stage role clarity affect funding round valuations?",
+                    "What dilution patterns emerge from CEO/President vs CEO/CTO structures?",
+                    "How do operational vs technical leadership priorities affect ARR growth?"
+                ],
+                "mechanisms_featured": [
+                    "M12_branching_role_structures",
+                    "M15_reverse_prospection_from_ipo_to_formation",
+                    "M7_causal_chains_equity_to_outcome",
+                    "M13_cofounder_relationship_evolution",
+                    "M11_board_negotiation_dialogs"
+                ],
+                "key_insight": "Role structure at formation compounds through funding rounds—operational leadership accelerates GTM",
+                "equity_mechanics": {
+                    "vesting": "4_year_1_year_cliff",
+                    "acceleration": "single_trigger_on_ipo",
+                    "esop_pool": "refreshed_at_each_round"
+                },
+                "emergent_format": True,
+                "uses_profile_system": False,
+                "reverse_chronology": True
+            }
+        )
+
+    @classmethod
+    def timepoint_acquisition_scenarios(cls) -> "SimulationConfig":
+        """
+        Compare acquisition outcomes: OpenAI $500M vs Anthropic $800M vs stay independent.
+
+        Company Acquisition 2027: Three parallel timelines from same formation. Timeline A:
+        OpenAI acquires for $500M cash (December 2026). Timeline B: Anthropic acquires for
+        $800M cash+stock (June 2027). Timeline C: Stay independent, IPO for $2B (November 2028).
+        Demonstrates M12 (branching), M15 (acquisition negotiations), M11 (strategic dialog).
+        """
+        return cls(
+            scenario_description=(
+                "**September 2026: The Offer Letter** - Founder A (CEO) and Founder B (President) "
+                "receive three acquisition offers within 6 weeks. Company is at $10M ARR, growing 400% YoY, "
+                "Series A funded ($15M at $60M post). They must decide: sell early, sell later, or stay independent? "
+                "\n\n"
+                "**Timeline A (OpenAI Acquisition - Dec 2026)**: OpenAI offers $500M all-cash, close in 90 days. "
+                "Sam Altman personally courts Founder A: 'We need temporal simulation for reinforcement learning and "
+                "safety testing. You'd run a 50-person team inside OpenAI with full autonomy.' The math: Founder A owns "
+                "32% post-dilution → $160M. Founder B owns 20% → $100M. Life-changing money at age 35/38. They accept. "
+                "By 2028, Company is deeply integrated into ChatGPT's training pipeline but Founder A reports to "
+                "OpenAI's CPO. The technology succeeded but the independent company dream died. Founder A sometimes "
+                "wonders what could have been. "
+                "\n\n"
+                "**Timeline B (Anthropic Acquisition - June 2027)**: Anthropic offers $800M (60% cash, 40% Anthropic "
+                "equity), close in 120 days. Dario Amodei pitches constitutional AI alignment: 'Company's modal "
+                "causality solves our interpretability problem.' The structure: Founder A gets $192M cash + $128M "
+                "Anthropic stock (currently worth $128M, potentially $500M if Anthropic IPOs). Founder B gets $120M "
+                "cash + $80M stock. Higher valuation, more upside, but stock illiquidity risk. They accept, betting "
+                "on Anthropic's trajectory. By 2028, Company is the foundation for Claude's scenario modeling. "
+                "Founder A is Anthropic VP with board seat. The Anthropic stock is now worth $400M (paper gains) but "
+                "still illiquid. Higher ceiling, higher risk. "
+                "\n\n"
+                "**Timeline C (Stay Independent - IPO Nov 2028)**: Founder A and Founder B decline both offers. 'We're "
+                "building a category-defining company. $500M is too low, and we don't want to be a feature inside "
+                "someone else's product.' They raise Series B ($50M at $250M post, Oct 2026), Series C ($150M at "
+                "$800M post, June 2027), and IPO at $2B (Nov 2028). Founder A owns 32% post-IPO → $640M liquid at IPO, "
+                "worth $960M by 2029. Founder B owns 20% → $400M liquid, worth $600M by 2029. Highest outcome but "
+                "required grinding through Series B, Series C, IPO process, public company scrutiny, and 2 more "
+                "years of 80-hour weeks. They kept control but paid in time and stress. "
+                "\n\n"
+                "Track 12 timepoints: (1-2) Formation & Series A (same across timelines), (3) September 2026 offers "
+                "arrive, (4-5) Timeline A: OpenAI negotiations → close Dec 2026, (6-7) Timeline B: Anthropic negotiations "
+                "→ close June 2027, (8-12) Timeline C: Series B → Series C → IPO Nov 2028. Demonstrates M12 (three "
+                "exit paths), M15 (prospection: modeling future outcomes under each scenario), M11 (founder-acquirer "
+                "negotiations), M8 (stress of decision-making: $500M bird in hand vs $2B in bush?), M7 (causal chains "
+                "from decision to outcome)."
+            ),
+            world_id="timepoint_acquisition_scenarios",
+            entities=EntityConfig(
+                count=6,  # Founder A + Founder B + OpenAI exec + Anthropic exec + Series B VC + IPO banker
+                types=["human"],
+                initial_resolution=ResolutionLevel.TRAINED,
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=12,  # Formation → offers → three divergent timelines
+                resolution="month"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # Three acquisition timelines
+                enable_counterfactuals=True
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json", "markdown"],
+                include_dialogs=True,  # Critical: acquisition negotiations
+                include_relationships=True,
+                include_knowledge_flow=True,
+                export_ml_dataset=True
+            ),
+            metadata={
+                "analysis_type": "acquisition_scenario_comparison",
+                "timelines": [
+                    {
+                        "id": "timeline_a_early_acquisition_cash",
+                        "structure": "Early acquisition by tech giant (all cash)",
+                        "hypothesis": "Quick liquidity provides founders with immediate wealth but caps upside and loses independence"
+                    },
+                    {
+                        "id": "timeline_b_later_acquisition_mixed",
+                        "structure": "Later acquisition with cash+stock structure",
+                        "hypothesis": "Higher valuation and strategic upside but introduces illiquidity risk and continued dependence on acquirer"
+                    },
+                    {
+                        "id": "timeline_c_stay_independent_ipo",
+                        "structure": "Remain independent and pursue IPO",
+                        "hypothesis": "Maximum outcome and control retention but requires years of grinding and execution risk"
+                    }
+                ],
+                "key_questions": [
+                    "How do founders weigh immediate liquidity vs long-term upside potential?",
+                    "What role does cash vs stock structure play in acquisition decisions?",
+                    "How does acquisition timing affect both valuation and founder satisfaction?",
+                    "What are the stress and opportunity cost tradeoffs of staying independent?",
+                    "How do cofounders align on exit decisions when personal circumstances differ?"
+                ],
+                "mechanisms_featured": [
+                    "M12_branching_exit_paths",
+                    "M15_prospection_modeling_future_outcomes",
+                    "M11_acquisition_negotiation_dialogs",
+                    "M8_embodied_stress_major_decision",
+                    "M7_causal_chains_offer_to_outcome",
+                    "M13_cofounder_alignment_on_decision"
+                ],
+                "emergent_format": True,
+                "uses_profile_system": False
+            }
+        )
+
+    @classmethod
+    def timepoint_cofounder_configurations(cls) -> "SimulationConfig":
+        """
+        Compare 4 co-founder role configurations from same formation moment.
+
+        Company Formation Scenarios: Four parallel timelines from October 2024 formation,
+        each with different co-founder role split: (A) CEO 55% / President 35%, (B) CEO 50% / CTO 40%,
+        (C) CEO 60% / VP Sales 20% + technical hire CTO 10%, (D) Executive Chair 45% / CEO 45%.
+        Track to Series A (18 months) to see which structure wins. Demonstrates M12, M13, M8, M7.
+        """
+        return cls(
+            scenario_description=(
+                "**October 2024: Formation Decision** - Founder A and Founder B are incorporating "
+                "Company. They have the technical prototype (17 mechanisms working, ANDOS training "
+                "validated). Now they must decide: what roles do we take? How do we split equity? Four parallel "
+                "universes diverge from this moment: "
+                "\n\n"
+                "**Timeline A (CEO 55% / President 35%)**: Founder A is CEO, Founder B is President. Clear division: "
+                "Founder A owns product vision, technical architecture, fundraising, board. Founder B owns operations, "
+                "GTM, sales, hiring, finance. Equity: Founder A 55%, Founder B 35%, ESOP 10%. By Month 6 (April 2025), "
+                "they have 2 paying customers ($15K MRR). Founder B built the sales process, Founder A closed deals. "
+                "By Month 12 (October 2025), $80K MRR, 3 salespeople reporting to Founder B. By Month 18 (April 2026), "
+                "$250K MRR. They raise Series A: $15M at $60M post. The President structure worked—clear swim lanes, "
+                "no overlap, complementary skills. VCs loved the operational muscle. "
+                "\n\n"
+                "**Timeline B (CEO 50% / CTO 40%)**: Founder A is CEO, Founder B is CTO. Founder B focuses purely on "
+                "product/engineering. Equity: Founder A 50%, Founder B 40%, ESOP 10%. By Month 6, they have 1 pilot "
+                "customer (no revenue—still testing). Founder A is doing product AND GTM, stretched thin. By Month 12, "
+                "product is technically superior but only $30K MRR. They hire VP Sales (takes 2% equity). By Month 18, "
+                "$120K MRR. They raise Series A: $12M at $40M post (lower than timeline A). The CTO structure is "
+                "product-strong but commercially slow. Founder B wishes he had more commercial responsibility. "
+                "\n\n"
+                "**Timeline C (CEO 60% / VP Sales 20% + CTO hire 10%)**: Founder A is CEO, Founder B is VP Sales. Equity: "
+                "Founder A 60%, Founder B 20%, ESOP 10%. Founder B feels under-valued (20% vs his contributions). By Month 3, "
+                "tension emerges: 'I'm doing as much as you but getting 1/3 the equity?' Founder A argues she's the "
+                "technical genius. They hire a CTO (10% equity, 4-year vest). By Month 8, the CTO realizes the "
+                "technology is too complex—can't keep up with Founder A's vision—quits. Now Founder A is CEO+CTO again. "
+                "Founder B is demoralized. By Month 15, Founder B leaves to start his own company. Founder A is alone with "
+                "50% of equity (Founder B forfeited 10% unvested). Series A: $10M at $30M post. The 60/20 split destroyed "
+                "trust and killed the company's momentum. "
+                "\n\n"
+                "**Timeline D (Executive Chair 45% / CEO 45%)**: Founder A is Executive Chair (product/vision), Founder B "
+                "is CEO (operations/business). Equity: Founder A 45%, Founder B 45%, ESOP 10%. This is the 'equal partnership' "
+                "model. By Month 6, friction emerges: who has final say? Founder A wants to prioritize animistic entities "
+                "(M16), Founder B wants to ship enterprise features. Board meetings become debates. By Month 10, investors "
+                "get nervous: 'You need ONE CEO, not two.' By Month 14, they do a 'CEO re-org': Founder B becomes sole "
+                "CEO, Founder A becomes Chief Product Officer. Equity stays 45/45 but Founder A lost title/control. By Month 18, "
+                "$180K MRR. Series A: $13M at $50M post. The equal split worked equity-wise but operationally messy. "
+                "\n\n"
+                "Track 18 timepoints: Formation (t0) → Month 3 (t1) → Month 6 (t2) → Month 9 (t3) → Month 12 (t4) → "
+                "Month 15 (t5) → Month 18 / Series A (t6). Four parallel timelines, each with 6 milestones. Demonstrates "
+                "M12 (four role structures), M13 (relationship evolution: trust vs tension), M8 (stress from "
+                "equity/control conflicts), M7 (causal chains: role → execution → outcome), M11 (difficult founder "
+                "conversations about equity and control)."
+            ),
+            world_id="timepoint_cofounder_configs",
+            entities=EntityConfig(
+                count=6,  # Founder A + Founder B + CTO hire (timeline C) + VP Sales hire + Series A VC + advisor
+                types=["human"],
+                initial_resolution=ResolutionLevel.TRAINED,
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=18,  # 6 milestones × 3 timepoints per milestone (decision, execution, outcome)
+                resolution="month"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # Four co-founder configurations
+                enable_counterfactuals=True
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json", "markdown"],
+                include_dialogs=True,  # Critical: founder conflict conversations
+                include_relationships=True,  # M13: trust vs tension dynamics
+                include_knowledge_flow=True,
+                export_ml_dataset=True
+            ),
+            metadata={
+                "analysis_type": "cofounder_role_configuration_comparison",
+                "formation_date": "2024-10",
+                "evaluation_date": "2026-04",  # 18 months post-formation
+                "timelines": [
+                    {
+                        "id": "timeline_a_ceo_president",
+                        "structure": "CEO + President (Operational Leader)",
+                        "equity_split": "55/35/10 (ESOP)",
+                        "hypothesis": "Clear role division with CEO focusing on product/fundraising and President on operations/GTM enables rapid scaling and strong valuations"
+                    },
+                    {
+                        "id": "timeline_b_ceo_cto",
+                        "structure": "CEO + CTO (Technical Leader)",
+                        "equity_split": "50/40/10 (ESOP)",
+                        "hypothesis": "Technical depth is maximized but commercial execution suffers without dedicated operational cofounder"
+                    },
+                    {
+                        "id": "timeline_c_ceo_vp_sales_undervalued",
+                        "structure": "CEO + VP Sales (Low Equity)",
+                        "equity_split": "60/20/10 (ESOP) + 10% CTO hire",
+                        "hypothesis": "Unequal equity split creates resentment and destroys cofounder trust, leading to departure and company damage"
+                    },
+                    {
+                        "id": "timeline_d_executive_chair_ceo",
+                        "structure": "Executive Chair + CEO (Equal Partners)",
+                        "equity_split": "45/45/10 (ESOP)",
+                        "hypothesis": "Equal partnership works equity-wise but creates decision paralysis requiring eventual role clarification"
+                    }
+                ],
+                "key_questions": [
+                    "Which cofounder role structures enable faster commercial scaling?",
+                    "How do equity splits affect long-term cofounder relationship health?",
+                    "Does CEO/President outperform CEO/CTO for commercial SaaS companies?",
+                    "What equity imbalances trigger cofounder resentment and departure?",
+                    "How does role clarity affect funding round valuations?"
+                ],
+                "mechanisms_featured": [
+                    "M12_branching_role_configurations",
+                    "M13_relationship_evolution_trust_vs_tension",
+                    "M8_embodied_stress_equity_conflict",
+                    "M7_causal_chains_role_to_outcome",
+                    "M11_difficult_founder_conversations"
+                ],
+                "emergent_format": True,
+                "uses_profile_system": False
+            }
+        )
+
+    @classmethod
+    def timepoint_equity_performance_incentives(cls) -> "SimulationConfig":
+        """
+        Compare equity structures: standard vesting vs performance milestones vs dynamic equity.
+
+        Company Equity Experiments: Three parallel timelines with different equity structures:
+        (A) Standard 50/50 with 4-year vesting, (B) 60/40 with performance milestones (revenue/product),
+        (C) Dynamic equity with contribution tracking and quarterly rebalancing. Track 24 months to see
+        which structure drives best outcomes and relationship health. Demonstrates M12, M13, M7, M15.
+        """
+        return cls(
+            scenario_description=(
+                "**October 2024: Equity Structure Decision** - Founder A and Founder B are finalizing "
+                "the cap table. Standard advice says '50/50 split with 4-year vest.' But should they consider "
+                "performance-based equity or dynamic contribution tracking? Three experiments: "
+                "\n\n"
+                "**Timeline A (Standard 50/50 Vesting)**: Founder A 50%, Founder B 50%, both 4-year vest with 1-year "
+                "cliff. Simple, clean, founder-friendly. By Month 6, Founder A is working 80 hr/wk on product (she's "
+                "the technical genius), Founder B is working 50 hr/wk on sales (learning curve). Founder A starts to "
+                "resent: 'I'm building everything, we get the same equity?' Founder B counters: 'I closed our first "
+                "3 customers.' By Month 12, tension rises. Product is great ($100K MRR) but Founder A feels under-rewarded "
+                "for technical heroics. By Month 18, they have a blowup argument. Founder A wants to renegotiate equity "
+                "to 60/40. Founder B refuses: 'We had a deal.' Relationship damaged. By Month 24, $300K MRR but trust "
+                "is low (0.60 relationship health). Standard vesting didn't account for differential contribution. "
+                "\n\n"
+                "**Timeline B (60/40 with Performance Milestones)**: Founder A 60%, Founder B 40%, but Founder B can earn "
+                "back to 45% by hitting milestones: (1) $50K MRR by Month 6 (+2%), (2) $200K MRR by Month 12 (+2%), "
+                "(3) Hire 5-person sales team by Month 18 (+1%). By Month 6, Founder B hits $65K MRR → earns 2%, now 42%. "
+                "He's motivated—concrete goals, clear rewards. By Month 12, they hit $220K MRR → Founder B earns another "
+                "2%, now 44%. Founder A appreciates his execution. By Month 18, Founder B has hired 6 salespeople → earns "
+                "final 1%, now 45%. Relationship health is high (0.85) because goals were transparent and Founder B "
+                "earned the equity through performance. By Month 24, $500K MRR. The milestone structure aligned "
+                "incentives and built trust through achievement. "
+                "\n\n"
+                "**Timeline C (Dynamic Equity with Contribution Tracking)**: Start 50/50, but use Slicing Pie or "
+                "similar dynamic equity model: track hours worked, revenue generated, capital contributed, key hires "
+                "made. Rebalance quarterly. By Month 3, Founder A has worked 960 hours, Founder B 600 hours → rebalance to "
+                "Founder A 57%, Founder B 43%. Founder B feels weird: 'My equity went down?' By Month 6, Founder B crushed sales "
+                "(3 customers, $40K MRR) → rebalance to Founder A 54%, Founder B 46% (his contributions weighted up). By "
+                "Month 9, Founder A built the entire ANDOS system (300 hours of deep work) → rebalance to Founder A 58%, "
+                "Founder B 42%. Founder B is frustrated: 'I can't win—my equity keeps moving.' By Month 15, Founder B asks "
+                "to switch to fixed vesting: 'This is demotivating.' They lock equity at Founder A 56%, Founder B 44%. "
+                "By Month 24, $350K MRR. Dynamic equity was theoretically fair but psychologically exhausting. "
+                "Constant rebalancing created anxiety, not motivation. "
+                "\n\n"
+                "Track 24 timepoints: 1 per month from formation to Series A. Three parallel timelines with "
+                "different equity structures. Demonstrates M12 (three equity models), M13 (relationship health "
+                "diverges dramatically by structure), M7 (equity structure → incentives → outcomes), M15 (founders "
+                "model future equity under each structure), M11 (difficult conversations about contribution and "
+                "fairness), M8 (stress from equity uncertainty in Timeline C)."
+            ),
+            world_id="timepoint_equity_incentives",
+            entities=EntityConfig(
+                count=4,  # Founder A + Founder B + lawyer/advisor + Series A VC
+                types=["human"],
+                initial_resolution=ResolutionLevel.TRAINED,
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=24,  # Monthly tracking for 24 months
+                resolution="month"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # Three equity structures
+                enable_counterfactuals=True
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json"],
+                include_dialogs=True,  # Critical: equity negotiation conversations
+                include_relationships=True,  # M13: trust dynamics under different structures
+                export_ml_dataset=True
+            ),
+            metadata={
+                "analysis_type": "equity_structure_performance_incentives",
+                "timelines": [
+                    {
+                        "id": "timeline_a_standard_5050_vesting",
+                        "structure": "Standard 50/50 with 4-year vesting and 1-year cliff",
+                        "hypothesis": "Equal equity split is simple and founder-friendly but may not account for differential contribution, leading to resentment"
+                    },
+                    {
+                        "id": "timeline_b_6040_performance_milestones",
+                        "structure": "60/40 initial with performance milestone earn-back",
+                        "hypothesis": "Performance milestones create clear goals and allow founders to earn equity through achievement, aligning incentives and building trust"
+                    },
+                    {
+                        "id": "timeline_c_dynamic_equity_tracking",
+                        "structure": "Dynamic equity with quarterly contribution rebalancing",
+                        "hypothesis": "Dynamic equity is theoretically fair but constant rebalancing creates psychological stress and demotivation"
+                    }
+                ],
+                "key_questions": [
+                    "How do different equity structures affect cofounder motivation and effort levels?",
+                    "Does performance-based equity create better alignment than fixed vesting?",
+                    "What are the psychological effects of dynamic equity rebalancing?",
+                    "How does equity certainty vs uncertainty impact relationship health?",
+                    "Which equity structures lead to better long-term business outcomes?"
+                ],
+                "mechanisms_featured": [
+                    "M12_branching_equity_structures",
+                    "M13_relationship_trust_under_different_incentives",
+                    "M7_equity_to_motivation_to_outcome",
+                    "M15_founders_model_future_equity",
+                    "M11_difficult_equity_conversations",
+                    "M8_stress_from_equity_uncertainty"
+                ],
+                "emergent_format": True,
+                "uses_profile_system": False
+            }
+        )
+
+    @classmethod
+    def timepoint_critical_formation_decisions(cls) -> "SimulationConfig":
+        """
+        Branch at formation critical decisions: Delaware vs Wyoming, patents vs trade secrets, angel vs bootstrap.
+
+        Company Formation Branching: Eight decision points at formation, each branching into 2-3 outcomes.
+        (1) Delaware C-Corp vs Wyoming LLC, (2) File patents early vs trade secrets, (3) Take $500K angel vs
+        bootstrap, (4) Hire lawyer now vs DIY formation, (5) Open source some code vs closed, (6) Target enterprise
+        vs SMB, (7) Raise pre-seed immediately vs build traction first. Each decision cascades. Demonstrates M12.
+        """
+        return cls(
+            scenario_description=(
+                "**October 2024: Formation Decision Tree** - Founder A and Founder B sit in a Palo Alto "
+                "coffee shop with 17 critical formation decisions to make. Each choice branches into multiple "
+                "futures. This simulation explores the exponential tree of early-stage decisions: "
+                "\n\n"
+                "**Decision 1: Incorporation** - Delaware C-Corp (standard for VCs, $2K setup, annual franchise "
+                "tax) vs Wyoming LLC (cheaper, privacy, but harder for VC funding). They choose Delaware C-Corp. "
+                "Outcome: VC-friendly, easier Series A negotiations. Cost: $2K setup + $450/year franchise tax. "
+                "\n\n"
+                "**Decision 2: IP Strategy** - File provisional patents on 17 mechanisms ($15K in legal fees, "
+                "12-month clock) vs keep as trade secrets (free, no disclosure). Branch A: File patents → $15K "
+                "cost but VCs love the IP moat → Series A valuation +15%. Branch B: Trade secrets → save $15K "
+                "but harder to defend against OpenAI/Anthropic copying the mechanisms → competitive risk. They "
+                "choose patents. Outcome: Strong IP position, higher valuation, but $15K cash burn. "
+                "\n\n"
+                "**Decision 3: Initial Funding** - Take $500K angel round (from YC partner, 10% equity at $5M cap) "
+                "vs bootstrap on savings ($200K runway). Branch A: Take angel → 12 months runway, can hire 2 "
+                "engineers, faster product development, but 10% dilution and angel wants board observer seat. "
+                "Branch B: Bootstrap → keep 100% equity, but slower development, might miss market window. They "
+                "take the angel round. Outcome: 10% dilution but 3x faster execution. "
+                "\n\n"
+                "**Decision 4: Legal Setup** - Hire Cooley/WSGR ($25K formation package) vs use Clerky/DIY ($2K). "
+                "Branch A: Hire WSGR → perfect docs, stock option plan, founder vesting, 83(b) elections all "
+                "correct → saves headaches at Series A. Branch B: DIY with Clerky → save $23K but sloppy cap "
+                "table, missing 83(b) elections → costs $50K in legal cleanup at Series A. They hire WSGR. "
+                "Outcome: $25K upfront but saves $50K+ later and avoids dilution penalties. "
+                "\n\n"
+                "**Decision 5: Open Source Strategy** - Open source the query engine (builds community, recruits "
+                "developers) vs closed source everything (protects IP). Branch A: Open source → 5,000 GitHub stars "
+                "by Month 6, inbound interest from enterprise, but competitors fork the code. Branch B: Closed "
+                "source → zero community but full control. They choose selective open source (query engine open, "
+                "17 mechanisms proprietary). Outcome: Best of both worlds—community + moat. "
+                "\n\n"
+                "**Decision 6: Target Market** - Enterprise (long sales cycles, $100K ACV) vs SMB (short cycles, "
+                "$10K ACV). Branch A: Enterprise → first deal takes 9 months but $120K ACV → $1M ARR from 9 customers. "
+                "Branch B: SMB → 100 customers at $10K ACV but high churn (50% annual) → $500K ARR. They choose "
+                "enterprise. Outcome: Slower but stickier revenue. "
+                "\n\n"
+                "**Decision 7: Raise Pre-Seed Immediately vs Build First** - Raise $2M pre-seed now (dilute 20% "
+                "at $8M post) vs build traction for 6 months then raise at higher valuation. Branch A: Raise now "
+                "→ 20% dilution, $2M in bank, hire 4 people, ship product in 6 months. Branch B: Build first → "
+                "keep equity, bootstrap to $50K MRR, raise $2M at $15M post (13% dilution) in Month 9. They choose "
+                "build first. Outcome: Less dilution (13% vs 20%), harder grind, but $7M valuation delta. "
+                "\n\n"
+                "Track 21 timepoints: 7 decision points × 3 timepoints each (decision → execution → outcome). "
+                "Demonstrates M12 (branching decision tree), M7 (decisions cascade causally), M15 (founders model "
+                "outcomes), M11 (founder debates on each decision)."
+            ),
+            world_id="timepoint_formation_decisions",
+            entities=EntityConfig(
+                count=5,  # Founder A + Founder B + lawyer + angel investor + advisor
+                types=["human"],
+                initial_resolution=ResolutionLevel.DIALOG,
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=21,  # 7 decisions × 3 timepoints each
+                resolution="day"  # Track formation decisions at daily resolution
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # Decision tree branches
+                enable_counterfactuals=True
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json", "markdown"],
+                include_dialogs=True,
+                include_relationships=True,
+                export_ml_dataset=True
+            ),
+            metadata={
+                "analysis_type": "critical_formation_decisions",
+                "decision_domains": [
+                    {"id": 1, "domain": "Incorporation Structure", "trade_off": "VC-friendly (Delaware C-Corp) vs cost-effective (Wyoming LLC)"},
+                    {"id": 2, "domain": "IP Protection Strategy", "trade_off": "Patent filing costs vs trade secret risk"},
+                    {"id": 3, "domain": "Initial Funding Approach", "trade_off": "Angel investment (dilution + runway) vs bootstrap (equity + constraints)"},
+                    {"id": 4, "domain": "Legal Infrastructure", "trade_off": "Premium law firm (clean setup) vs DIY (cost savings + future cleanup risk)"},
+                    {"id": 5, "domain": "Open Source Strategy", "trade_off": "Community building vs IP protection"},
+                    {"id": 6, "domain": "Target Market Selection", "trade_off": "Enterprise (high ACV, slow cycles) vs SMB (low ACV, fast cycles)"},
+                    {"id": 7, "domain": "Fundraising Timing", "trade_off": "Raise early (more runway, more dilution) vs build traction first (less dilution, slower)"}
+                ],
+                "key_questions": [
+                    "How do early incorporation decisions affect later fundraising ability?",
+                    "What is the ROI of patent filing vs trade secrets for venture-backed companies?",
+                    "How does angel funding timing affect Series A valuations and dilution?",
+                    "What are the long-term costs of DIY legal vs premium law firms?",
+                    "How does open source strategy impact community growth and competitive moats?",
+                    "Which target market decisions lead to better unit economics?",
+                    "How does pre-traction fundraising timing affect founder dilution?"
+                ],
+                "mechanisms_featured": [
+                    "M12_branching_decision_tree",
+                    "M7_causal_chains_decisions_cascade",
+                    "M15_prospection_modeling_outcomes",
+                    "M11_founder_debates_on_decisions"
+                ],
+                "emergent_format": True,
+                "uses_profile_system": False
+            }
+        )
+
+    @classmethod
+    def timepoint_success_vs_failure_paths(cls) -> "SimulationConfig":
+        """
+        Two timelines from same formation: one succeeds to IPO ($2B), one fails (shutdown).
+
+        Company Success vs Failure: Parallel timelines from identical starting conditions (October 2024,
+        same team, same tech). Timeline A makes optimal decisions → IPO $2B (Nov 2028). Timeline B makes
+        suboptimal decisions → shutdown (August 2026). Trace the divergence to identify critical failure
+        points. Demonstrates M12 (branching), M7 (causal chains to failure), M13 (relationship breakdown).
+        """
+        return cls(
+            scenario_description=(
+                "**October 2024: Two Timelines Diverge** - Founder A and Founder B incorporate Company. "
+                "Same team, same technology, same market opportunity. But in one timeline, they make optimal decisions "
+                "and reach $2B IPO. In the other, they make suboptimal decisions and shut down in 22 months. What "
+                "went wrong? "
+                "\n\n"
+                "**Timeline A (Success → IPO $2B)**: (1) Month 0: Incorporate in Delaware, file patents, take $500K "
+                "angel at 10% equity. (2) Month 6: Launch MVP, sign first 3 customers ($30K MRR), product-market fit "
+                "validated. (3) Month 12: Raise $2M pre-seed at $12M post (14% dilution), $150K MRR, hire 4 people. "
+                "(4) Month 18: $500K MRR, 15 employees, strong unit economics ($5K CAC, $100K LTV). Raise $15M Series A "
+                "at $60M post. (5) Month 30: $3M MRR, 40 employees. Raise $50M Series B at $250M post. (6) Month 42: "
+                "$15M MRR. Raise $150M Series C at $800M post. (7) Month 50 (Nov 2028): IPO at $2B, $150M ARR. "
+                "Success drivers: (a) Clear CEO/President roles, (b) Enterprise focus (high ACV), (c) Capital efficient "
+                "(raised at increasing valuations), (d) Strong relationship between founders (0.90 health throughout). "
+                "\n\n"
+                "**Timeline B (Failure → Shutdown Aug 2026)**: (1) Month 0: Same incorporation, but they skip patents "
+                "(\"too expensive\"). Bootstrap instead of taking angel round (\"keep 100% equity\"). Already a mistake—no "
+                "runway. (2) Month 6: Burn through savings ($180K spent), only 1 pilot customer (no revenue). Product "
+                "too complex, no PMF yet. Desperation sets in. (3) Month 9: Take $500K angel at 25% equity (desperation "
+                "valuation, 2.5x worse than Timeline A). Founder equity now 37.5% each. (4) Month 12: Still only $15K MRR, "
+                "6 employees burning $75K/month. Runway is 4 months. Try to raise Series A but no traction. (5) Month 14: "
+                "Founder conflict erupts: Founder A blames Founder B for weak sales execution, Founder B blames Founder A for over-engineered "
+                "product. Relationship health drops to 0.30. (6) Month 16: VCs pass on Series A: 'Come back when you have "
+                "$100K MRR.' Founders consider pivoting to SMB. More conflict: Founder A wants to stay enterprise, Founder B wants "
+                "SMB volume. (7) Month 18: Pivot to SMB, rewrite sales playbook. But now they're 6 months behind competitors. "
+                "(8) Month 20: $40K MRR (SMB), but burn is $60K/month. Bank account: $120K. Founder B wants to shut down, Founder A "
+                "wants to fight. (9) Month 22 (August 2026): Runway is 60 days. No investor interest. Founders agree to shut "
+                "down. Final equity: Founder A 37.5%, Founder B 37.5%, investors 25%—all worthless. Postmortem: (a) Skipping angel "
+                "round killed runway, (b) No patents → competitors copied mechanisms, (c) Founder conflict destroyed morale, "
+                "(d) Late pivot wasted time. "
+                "\n\n"
+                "Track 22 timepoints in Timeline B (failure), 50 timepoints in Timeline A (success). Demonstrates M12 "
+                "(success vs failure branching), M7 (causal chains: bad decision → cash crunch → desperation → conflict "
+                "→ shutdown), M13 (relationship health: 0.90 in success, 0.30 in failure), M8 (embodied stress in failure "
+                "timeline), M11 (founder conflict dialogs in failure timeline), M15 (in Month 20, founders model 'do we "
+                "shut down or fight?')."
+            ),
+            world_id="timepoint_success_vs_failure",
+            entities=EntityConfig(
+                count=6,  # Founder A + Founder B + angel investor + Series A VC (success) + failed investor (failure) + advisor
+                types=["human"],
+                initial_resolution=ResolutionLevel.TRAINED,
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=25,  # Timeline B: 22 timepoints to failure, Timeline A: diverges at Month 0 and runs to Month 50 (tracked as summary)
+                resolution="month"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # Success vs failure
+                enable_counterfactuals=True
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json", "markdown"],
+                include_dialogs=True,  # Critical: founder conflict in failure timeline
+                include_relationships=True,  # M13: relationship breakdown in failure
+                export_ml_dataset=True
+            ),
+            metadata={
+                "analysis_type": "success_vs_failure_paths",
+                "timelines": [
+                    {
+                        "id": "timeline_a_success_path",
+                        "structure": "Optimal decisions leading to IPO",
+                        "hypothesis": "Early funding, IP protection, clear roles, and founder alignment enable exponential growth and successful exit"
+                    },
+                    {
+                        "id": "timeline_b_failure_path",
+                        "structure": "Suboptimal decisions leading to shutdown",
+                        "hypothesis": "Bootstrap without runway, skipping IP protection, founder conflict, and panic pivots create cascading failures"
+                    }
+                ],
+                "key_questions": [
+                    "What are the earliest decision points that differentiate success from failure?",
+                    "How does founder relationship health correlate with company outcomes?",
+                    "What role does initial funding timing play in long-term success?",
+                    "How do IP protection decisions affect competitive positioning?",
+                    "When do companies reach 'point of no return' failure cascades?",
+                    "How does panic pivoting affect company trajectory vs staying the course?"
+                ],
+                "mechanisms_featured": [
+                    "M12_branching_success_vs_failure",
+                    "M7_causal_chains_bad_decisions_to_shutdown",
+                    "M13_relationship_breakdown_in_failure",
+                    "M8_embodied_stress_desperation_in_failure",
+                    "M11_founder_conflict_dialogs",
+                    "M15_prospection_shutdown_decision_modeling"
+                ],
+                "emergent_format": True,
+                "uses_profile_system": False
+            }
+        )
+
+    @classmethod
+    def timepoint_launch_marketing_campaigns(cls) -> "SimulationConfig":
+        """
+        Emergent marketing campaign strategy comparison across four different approaches.
+
+        Explores how different marketing strategies (content/SEO, paid acquisition,
+        community building, enterprise outbound) perform under different conditions.
+        Agents decide budget allocation, messaging, channels, and creative execution.
+        Outcomes emerge from founder creativity, market conditions, and execution quality.
+
+        Mechanisms: M3 (branching), M10 (scene analysis), M14 (circadian rhythm)
+        """
+        return cls(
+            scenario_description=(
+                "**January 2025: Launch Marketing Campaign Decision** - Company has a functional product "
+                "and $120K in initial funding. Founder A and Founder B must decide on their go-to-market "
+                "strategy. This simulation explores four different marketing approaches across parallel timelines. "
+                "Track for 9 months to measure customer acquisition, burn rate, and product-market fit signals. "
+                "Agents must make all creative, budgeting, and channel decisions—outcomes emerge from execution quality."
+                "\n\n"
+                "**Timeline A: Content Marketing + SEO (Organic Growth)**"
+                "\n"
+                "Founder A and Founder B debate their marketing strategy. Timeline A pursues content marketing: "
+                "blog posts, technical guides, SEO optimization, organic social media. This approach requires "
+                "minimal ad spend but significant creative effort {content_hours_per_week}. Month 1-3: Founders "
+                "must decide content topics {content_topics}, publishing frequency {posts_per_week}, and SEO "
+                "keywords {target_keywords}. They create content themselves or hire writers {hiring_decision}. "
+                "Month 4-6: Search rankings begin to emerge {domain_authority_month_6}, organic traffic grows "
+                "{monthly_visitors_month_6}, but paid conversions remain low {mrr_month_6}. Founders debate: "
+                "is organic growth too slow {pivot_discussion_month_6}? Month 7-9: Long-tail SEO compounds "
+                "{organic_traffic_month_9}, some enterprise leads emerge from content {enterprise_leads}, "
+                "but burn rate concerns mount {cash_remaining_month_9}. Can they reach sustainability before "
+                "running out of money {runway_months_remaining}?"
+                "\n\n"
+                "**Timeline B: Paid Acquisition + Growth Hacking (Fast Burn)**"
+                "\n"
+                "Timeline B pursues aggressive paid acquisition: Google Ads, LinkedIn campaigns, retargeting, "
+                "growth hacking experiments. Founders allocate $60K to paid channels {monthly_ad_budget}. "
+                "Month 1-3: They experiment with messaging {ad_creative_variations}, targeting {audience_segments}, "
+                "and channels {channel_mix}. Early CAC is high {cac_month_3} but they gain rapid learning "
+                "{conversion_insights}. Month 4-6: Founders optimize based on data {optimization_strategy}, "
+                "discover best-performing segments {winning_segments}, scale winning campaigns {budget_increase}. "
+                "MRR grows faster {mrr_month_6} but burn accelerates {monthly_burn_month_6}. Month 7-9: "
+                "They face a critical decision: continue burning to scale {continue_paid} or pull back to "
+                "extend runway {reduce_spend}? If CAC remains high {cac_month_9} relative to LTV, can they "
+                "achieve unit economics {ltv_cac_ratio} or do they run out of cash {cash_remaining_month_9}?"
+                "\n\n"
+                "**Timeline C: Community Building + Influencer Partnerships (Relationship-Driven)**"
+                "\n"
+                "Timeline C focuses on community: Discord server, Slack community, partnerships with micro-influencers, "
+                "developer advocacy. Low cash burn {monthly_budget_community} but high founder time investment "
+                "{community_hours_per_week}. Month 1-3: Founders identify niche communities {target_communities}, "
+                "engage authentically {engagement_strategy}, recruit early champions {community_champions}. "
+                "They debate: should Founder A be full-time community manager {role_allocation} or hire someone "
+                "{hiring_decision}? Month 4-6: Community size grows {community_members_month_6}, engagement "
+                "is strong {daily_active_users}, but paid conversions lag {mrr_month_6}. Influencer partnerships "
+                "{influencer_deals} generate awareness but unclear ROI. Month 7-9: Network effects begin "
+                "{referral_rate_month_9}, community members become evangelists {user_generated_content}, "
+                "some enterprises discover product through community {enterprise_pipeline}. Can relationship-driven "
+                "growth create sustainable CAC advantage {organic_conversion_rate} or is it too slow to scale "
+                "{growth_rate_month_9}?"
+                "\n\n"
+                "**Timeline D: Enterprise Outbound Sales (High-Touch)**"
+                "\n"
+                "Timeline D pursues enterprise outbound: cold email, LinkedIn outreach, demo calls, multi-touch "
+                "sales cycles. Founders hire a sales development rep {sdr_hire_month} and build outbound playbook "
+                "{outbound_playbook}. Month 1-3: They define ideal customer profile {icp_criteria}, build prospect "
+                "lists {prospect_count}, craft messaging {email_sequences}, and start outreach {emails_sent_per_week}. "
+                "Initial response rates {response_rate_month_3} and meeting booking {meetings_booked} emerge. "
+                "Month 4-6: Sales cycles progress {avg_deal_cycle_days}, they negotiate first enterprise deals "
+                "{deal_negotiations}, handle objections {common_objections}. Some deals close {mrr_month_6}, "
+                "others stall {pipeline_stalled}. Month 7-9: They refine pitch based on learnings {pitch_evolution}, "
+                "discover which segments convert fastest {fastest_converting_segments}, build case studies "
+                "{customer_case_studies}. Enterprise ARR grows {arr_month_9} but CAC remains high {cac_month_9} "
+                "and sales cycles long {avg_sales_cycle}. Can they prove enterprise model is scalable {sales_efficiency} "
+                "or does high-touch selling burn too much cash {cash_remaining_month_9}?"
+            ),
+            entities=EntityConfig(
+                count=2,
+                types=["human"]
+            ),
+            timepoints=CompanyConfig(
+                count=9,
+                resolution="month"
+            ),
+            temporal=TemporalConfig(mode=TemporalMode.PEARL),
+            world_id="timepoint_launch_marketing_campaigns",
+            metadata={
+                "analysis_type": "marketing_campaign_strategy_comparison",
+                "timelines": [
+                    {
+                        "id": "timeline_a_content_seo",
+                        "structure": "Content marketing + SEO (organic growth)",
+                        "hypothesis": "Organic content creation builds long-term search authority and low-cost acquisition but requires patience and may be too slow for venture timelines"
+                    },
+                    {
+                        "id": "timeline_b_paid_acquisition",
+                        "structure": "Paid acquisition + growth hacking (fast burn)",
+                        "hypothesis": "Paid channels enable rapid experimentation and learning but high CAC may prevent unit economics from working before cash runs out"
+                    },
+                    {
+                        "id": "timeline_c_community_influencer",
+                        "structure": "Community building + influencer partnerships (relationship-driven)",
+                        "hypothesis": "Community-driven growth creates authentic engagement and word-of-mouth but may lack the velocity needed for aggressive scaling"
+                    },
+                    {
+                        "id": "timeline_d_enterprise_outbound",
+                        "structure": "Enterprise outbound sales (high-touch)",
+                        "hypothesis": "Direct enterprise sales generates higher ACV and predictable pipeline but long cycles and high CAC test cash runway limits"
+                    }
+                ],
+                "key_questions": [
+                    "Which marketing strategy achieves the best balance of growth rate and capital efficiency?",
+                    "How do founder personality and creativity affect success of content vs community strategies?",
+                    "Can paid acquisition achieve sustainable unit economics (LTV/CAC > 3) within 9 months?",
+                    "Does community-driven growth create durable competitive advantages through network effects?",
+                    "Which approach generates the strongest product-market fit signals from customer feedback?",
+                    "How do different strategies affect founder stress, time allocation, and relationship health?",
+                    "Can enterprise outbound sales prove scalability or does it remain a high-touch grind?"
+                ],
+                "emergent_format": True,
+                "uses_profile_system": True,
+                "mechanisms": ["M3_branching", "M10_scene_analysis", "M14_circadian_rhythm"],
+                "initial_conditions": {
+                    "starting_capital": 120000,
+                    "product_status": "functional MVP",
+                    "current_mrr": 2000,
+                    "team_size": 2,
+                    "monthly_burn": 15000
+                }
+            }
+        )
+
+    @classmethod
+    def timepoint_staffing_and_growth(cls) -> "SimulationConfig":
+        """
+        Emergent team scaling strategy comparison across four different hiring approaches.
+
+        Explores how different hiring strategies (sales-first, product-first, leadership-first,
+        generalist-scrappy) affect company growth, culture, and capital efficiency. Agents decide
+        hiring priorities, compensation, role definitions, and team structure. Outcomes emerge from
+        founder management skills, market conditions, and talent quality.
+
+        Mechanisms: M3 (branching), M10 (scene analysis), M14 (circadian rhythm), M15 (prospection)
+        """
+        return cls(
+            scenario_description=(
+                "**March 2025: First Hiring Wave Decision** - Company raised $800K seed round and has "
+                "$30K MRR with 2 founders and 1 contractor. Founder A and Founder B must decide how to "
+                "deploy their first $400K in hiring budget. This simulation explores four different team "
+                "scaling approaches across parallel timelines. Track for 12 months to measure revenue growth, "
+                "team effectiveness, burn rate, and culture. Agents must make all hiring, compensation, and "
+                "organizational decisions—outcomes emerge from execution quality and market fit."
+                "\n\n"
+                "**Timeline A: Sales-First Hiring (Revenue Acceleration)**"
+                "\n"
+                "Founder A and Founder B debate hiring strategy. Timeline A prioritizes revenue generation: "
+                "hire Sales Development Rep (SDR), Account Executive (AE), Customer Success Manager (CSM). "
+                "Month 1-3: They define sales roles {sales_role_definitions}, set compensation {sales_comp_structure}, "
+                "recruit candidates {recruiting_strategy}, and make offers {offer_packages}. First sales hire "
+                "starts {first_hire_start_date}, ramp-up begins {onboarding_plan}. Founders must manage sales "
+                "team {management_approach} while still building product {founder_time_split}. Month 4-6: "
+                "Sales team performance emerges {sales_quota_attainment}, pipeline builds {pipeline_value_month_6}, "
+                "but product velocity slows {feature_releases_month_6}. Founders debate: hire more engineers "
+                "{hiring_adjustment_debate} or double down on sales {continue_sales_first}? Month 7-9: Revenue "
+                "accelerates {mrr_month_9}, but technical debt accumulates {tech_debt_month_9}, product "
+                "quality concerns surface {customer_complaints}. Month 10-12: Can sales-driven growth reach "
+                "$150K MRR {revenue_target} before product issues {churn_rate_month_12} cause problems? "
+                "Team size {team_size_month_12}, burn rate {monthly_burn_month_12}, and culture fit "
+                "{culture_health_score} all emerge from decisions."
+                "\n\n"
+                "**Timeline B: Product-First Hiring (Technical Excellence)**"
+                "\n"
+                "Timeline B prioritizes product development: hire Senior Engineer, Product Designer, "
+                "Technical Lead. Month 1-3: Founders define engineering roles {eng_role_definitions}, "
+                "set technical bar {interview_process}, recruit from networks {sourcing_channels}, negotiate "
+                "offers {eng_compensation}. First engineer joins {first_hire_onboarding}, architecture "
+                "decisions made {tech_stack_choices}. Product velocity accelerates {features_shipped_month_3}. "
+                "Month 4-6: Engineering team builds ambitious roadmap {product_roadmap}, ships major features "
+                "{feature_releases_month_6}, improves scalability {infrastructure_improvements}. But revenue "
+                "growth stalls {mrr_month_6} as founders remain the only sales people {sales_capacity}. "
+                "Founders debate: can product quality alone drive growth {product_led_growth_belief} or do "
+                "they need sales support {hire_sales_debate}? Month 7-9: Product reaches technical excellence "
+                "{product_quality_score}, some organic growth from word-of-mouth {referral_customers}, but "
+                "burn accelerates {cash_remaining_month_9}. Month 10-12: Can product-led growth prove out "
+                "{plg_metrics_month_12} or do they run out of runway {months_runway_remaining} before achieving "
+                "revenue targets? Engineering culture is strong {eng_culture_score} but commercial execution "
+                "lags {sales_execution_score}."
+                "\n\n"
+                "**Timeline C: Leadership-First Hiring (Executive Leverage)**"
+                "\n"
+                "Timeline C hires experienced operators: VP Sales, VP Engineering, or VP Product. High-cost "
+                "bet on leverage. Month 1-3: Founders identify executive needs {exec_role_priority}, recruit "
+                "senior candidates {exec_search_strategy}, negotiate expensive packages {exec_comp_200k_plus}. "
+                "They debate: can we afford this {burn_rate_concern} and will executive mesh with startup "
+                "culture {culture_fit_concerns}? First exec joins {exec_start_date}, brings experience and "
+                "network {exec_value_adds}. Month 4-6: Executive hires their team {exec_builds_team}, "
+                "implements processes {new_processes}, drives strategy {strategic_initiatives}. Founders "
+                "debate: are we moving faster {velocity_assessment} or did we add bureaucracy {overhead_concerns}? "
+                "Revenue impact {mrr_month_6} and product velocity {features_month_6} emerge. Month 7-9: "
+                "Executive leverage multiplies {team_output_month_9} or politics emerge {org_dysfunction}. "
+                "Burn rate is high {monthly_burn_month_9}, clock is ticking {runway_months}. Month 10-12: "
+                "Did executive hiring accelerate path to Series A {series_a_readiness} or burn cash without "
+                "proportional results {roi_on_exec_hire}? Team culture {culture_score_month_12} and founder "
+                "satisfaction {founder_satisfaction} reveal fit quality."
+                "\n\n"
+                "**Timeline D: Generalist-Scrappy Hiring (Capital Efficient)**"
+                "\n"
+                "Timeline D hires versatile generalists willing to do anything. No specialists. Month 1-3: "
+                "Founders hire scrappy generalists {generalist_profile} with lower salaries {comp_80k_range}, "
+                "flexible roles {role_fluidity}, startup mentality {culture_fit_criteria}. First hires join "
+                "{hire_1_hire_2_start}, everyone does everything {role_responsibilities}. Overhead is minimal "
+                "{low_burn_rate}. Month 4-6: Generalists wear many hats {tasks_per_person}, learn quickly "
+                "{learning_velocity}, ship features and close deals {output_breadth}. But efficiency suffers "
+                "{output_per_person} compared to specialists. Revenue grows modestly {mrr_month_6}, product "
+                "advances slowly {product_velocity}. Founders debate: do we need specialists {hire_specialist_debate} "
+                "or stay scrappy longer {maintain_generalist_approach}? Month 7-9: Scrappiness creates strong "
+                "culture {team_cohesion} and capital efficiency {burn_rate_month_9}, but scaling challenges "
+                "emerge {specialist_skill_gaps}. Some generalists burn out {employee_burnout}, others thrive "
+                "{high_performers}. Month 10-12: Can generalist approach reach $100K MRR {revenue_month_12} "
+                "while preserving long runway {months_runway_remaining}? Team morale {morale_score} and "
+                "founder stress {founder_stress_level} emerge from workload distribution."
+            ),
+            entities=EntityConfig(
+                count=2,
+                types=["human"]
+            ),
+            timepoints=CompanyConfig(
+                count=12,
+                resolution="month"
+            ),
+            temporal=TemporalConfig(mode=TemporalMode.PEARL),
+            world_id="timepoint_staffing_and_growth",
+            metadata={
+                "analysis_type": "team_scaling_strategy_comparison",
+                "timelines": [
+                    {
+                        "id": "timeline_a_sales_first",
+                        "structure": "Sales-first hiring (SDR, AE, CSM)",
+                        "hypothesis": "Prioritizing sales hires accelerates revenue but risks technical debt accumulation and product quality degradation"
+                    },
+                    {
+                        "id": "timeline_b_product_first",
+                        "structure": "Product-first hiring (engineers, designers, technical leads)",
+                        "hypothesis": "Building strong product foundation enables long-term scale but may burn cash before achieving commercial traction"
+                    },
+                    {
+                        "id": "timeline_c_leadership_first",
+                        "structure": "Leadership-first hiring (experienced VPs and executives)",
+                        "hypothesis": "Executive leverage multiplies team output but high cost and cultural mismatch risk can backfire in early-stage startups"
+                    },
+                    {
+                        "id": "timeline_d_generalist_scrappy",
+                        "structure": "Generalist-scrappy hiring (versatile operators, no specialists)",
+                        "hypothesis": "Capital-efficient generalists extend runway and build culture but lack of specialization limits scaling velocity"
+                    }
+                ],
+                "key_questions": [
+                    "Which hiring strategy achieves the best balance of revenue growth and capital efficiency?",
+                    "How do early hiring decisions affect company culture and team cohesion over 12 months?",
+                    "Can sales-first hiring overcome technical debt fast enough to avoid churn problems?",
+                    "Does product-first hiring enable product-led growth or just burn runway?",
+                    "When does executive hiring create leverage vs bureaucracy in early-stage startups?",
+                    "Can generalist teams scale to $100K+ MRR or do they hit specialist skill gaps?",
+                    "How do different hiring strategies affect founder stress, time allocation, and satisfaction?",
+                    "Which approach creates the strongest Series A positioning after 12 months?"
+                ],
+                "emergent_format": True,
+                "uses_profile_system": True,
+                "mechanisms": ["M3_branching", "M10_scene_analysis", "M14_circadian_rhythm", "M15_prospection"],
+                "initial_conditions": {
+                    "starting_capital": 800000,
+                    "current_mrr": 30000,
+                    "team_size": 2,
+                    "hiring_budget": 400000,
+                    "monthly_burn": 25000,
+                    "months_since_founding": 8
+                }
+            }
+        )
+
+    @classmethod
+    def timepoint_founder_personality_archetypes(cls) -> "SimulationConfig":
+        """
+        Comprehensive founder personality × governance structure matrix.
+
+        Test 6 founder personality archetypes × 2 governance structures (optimal vs suboptimal).
+        Demonstrates which personalities need which governance models. Based on real patterns:
+        Palmer Luckey (Anduril), Elon + Gwynne (SpaceX), Brian Chesky (Airbnb), Zuck + Sheryl,
+        Larry/Sergey + Eric Schmidt, Steve Jobs fired/returned. Twelve parallel timelines.
+        """
+        return cls(
+            scenario_description=(
+                "**October 2024: Founder Personality Diagnosis** - Founder A has the technical prototype. "
+                "But which governance structure fits their personality? This simulation tests 6 founder archetypes, "
+                "each exploring different governance structures (12 branching timelines). Track to Series A negotiation "
+                "(18-24 months). Agents must make all structural and equity decisions—outcomes emerge from personality-driven negotiations."
+                "\n\n"
+                "**ARCHETYPE 1: CHARISMATIC VISIONARY** "
+                "\n"
+                "Personality: Technical genius, media darling, polarizing, relentless. Brilliant but creates controversies. "
+                "Naturally drawn to spotlight and vision work. Struggles with operational details. "
+                "\n"
+                "Timeline 1A: Founder A and Founder B negotiate governance structure. Founder A argues they should lead technical "
+                "vision and fundraising (their natural strengths). Founder B argues for taking operational leadership role. "
+                "They must negotiate: Who is CEO? Who is Chief Scientist/CTO? What equity split {equity_founder_a}, {equity_founder_b} "
+                "reflects their contributions? Month 6: Founder A will likely pursue media opportunities—how does this affect "
+                "operations {mrr_month_6}? Month 12: If Founder A creates controversies (likely given personality), how does "
+                "governance structure handle this {crisis_resolution_month_12}? Revenue outcome {mrr_month_12}. Month 18: "
+                "Series A investors evaluate structure and performance—they make offer {series_a_amount} at {valuation_1a}. "
+                "\n"
+                "Timeline 1B: Founder A and Founder B explore different governance. Founder A might argue to be CEO themselves {equity_founder_a_1b}. "
+                "How do negotiations proceed? Do they reach agreement or impasse? Month 4-8: Track operational execution given "
+                "structure chosen {operational_health}. Month 12: Has structure created problems {governance_crisis}? Revenue "
+                "{mrr_month_12_1b} reflects decisions made. Relationship health {relationship_quality_1b} emerges from fit between "
+                "personality and structure. "
+                "\n\n"
+                "**ARCHETYPE 2: DEMANDING GENIUS** "
+                "\n"
+                "Personality: Product-obsessed, chaotic, brilliant, exhausting. Makes impossible demands. Fires people impulsively. "
+                "Drives teams hard. Needs someone with thick skin who can translate chaos into execution. "
+                "\n"
+                "Timeline 2A: Founder A and Founder B negotiate. Given Founder A's demanding nature, what role should they hold {title_founder_a}? "
+                "Founder B evaluates: can they handle being Founder A's #2 and absorbing their chaos? They negotiate equity {equity_founder_a_2a}, "
+                "{equity_founder_b_2a} and decision-making authority. Month 6: Founder A will likely make impossible demands {demands_month_6}. "
+                "How does Founder B respond {founder_b_response}? Can they deliver partial results or does relationship fracture? Revenue "
+                "{mrr_month_6_2a}. Month 12: Founder A may fire someone impulsively {firing_event}—Founder B must decide how to handle this. "
+                "Revenue {mrr_month_12_2a}, team morale {morale_2a}, relationship strength {relationship_2a} all emerge from these "
+                "interactions. Month 18: Series A evaluation {series_a_amount_2a} at {valuation_2a}. "
+                "\n"
+                "Timeline 2B: Different governance structure. What if Founder A doesn't have a strong #2 to absorb chaos {structure_2b}? "
+                "Track: employee turnover {turnover_rate}, engineering retention {retention_health}, cultural toxicity {culture_score}. "
+                "Revenue outcome {mrr_month_12_2b} emerges from structural choices. "
+                "\n\n"
+                "**ARCHETYPE 3: DESIGN PERFECTIONIST** "
+                "\n"
+                "Personality: User experience obsessed, vulnerable leadership style, product vision exceptional. Will obsess over "
+                "details. Less comfortable with hard business decisions. Naturally gravitates toward product work. "
+                "\n"
+                "Timeline 3A: Founder A and Founder B negotiate roles. Founder A will naturally want to own product/design {role_founder_a_3a}. "
+                "Founder B must decide: take business operations role or push for different structure? Equity negotiation {equity_founder_a_3a}, "
+                "{equity_founder_b_3a}. Month 6: Product quality {product_quality_month_6} will likely be high given Founder A's obsession. "
+                "But is anyone driving sales {sales_health}? Revenue {mrr_month_6_3a}. Month 12: Has Founder A's perfectionism created "
+                "product excellence {product_excellence} or paralysis {shipping_velocity}? Did Founder B build business operations "
+                "{ops_health_3a}? Revenue {mrr_month_12_3a}. Series A: Investors evaluate product vs business balance {series_a_amount_3a} "
+                "at {valuation_3a}. "
+                "\n"
+                "Timeline 3B: Founder A tries to handle everything themselves {structure_3b}. Month 6: Track where Founder A spends time "
+                "{time_allocation}. Given personality, likely obsessing on product—who drives sales {sales_month_6_3b}? Revenue "
+                "{mrr_month_6_3b}. Month 12: Product quality {product_quality_3b} vs customer acquisition {customer_growth_3b} tradeoff "
+                "emerges. Revenue {mrr_month_12_3b}. "
+                "\n\n"
+                "**ARCHETYPE 4: YOUNG GROWER** "
+                "\n"
+                "Personality: Technical genius, initially awkward in business situations, learns extremely fast, wants to maintain "
+                "control. Uncomfortable with being sidelined. Can grow into CEO role but needs coaching. "
+                "\n"
+                "Timeline 4A: Founder A and Founder B negotiate. Founder A wants to stay CEO {founder_a_wants_ceo} but knows they need to grow. "
+                "Founder B must decide: take COO/coach role {founder_b_role_4a} or push for different structure? Equity {equity_founder_a_4a}, "
+                "{equity_founder_b_4a}. Month 6: Track Founder A's learning curve {ceo_skill_growth}. In sales calls, are they improving "
+                "{sales_performance} with Founder B coaching? Revenue {mrr_month_6_4a}. Month 12: Has Founder A developed CEO capabilities "
+                "{ceo_capability_month_12} through experience + coaching? Revenue {mrr_month_12_4a}, relationship {relationship_4a}. "
+                "Series A: Investors evaluate young founder's growth trajectory {series_a_amount_4a} at {valuation_4a}. "
+                "\n"
+                "Timeline 4B: Board considers hiring experienced 'adult' CEO {hire_adult_ceo_decision}. If hired: What equity does "
+                "hired CEO get {equity_hired_ceo}? How does Founder A respond to being sidelined {founder_a_reaction}? Month 6-10: Track "
+                "Founder A-hired CEO relationship {founder_ceo_tension}. Does hired CEO understand technical vision {ceo_tech_understanding}? "
+                "Does Founder A undermine CEO authority {undermining_behavior}? Month 14: Relationship outcome {relationship_crisis_month_14}, "
+                "potential CEO departure {ceo_quit_scenario}. "
+                "\n\n"
+                "**ARCHETYPE 5: DUAL TECH FOUNDERS** "
+                "\n"
+                "Personality: Two technical geniuses with complementary skills. Neither naturally gravitates toward CEO role. "
+                "Both prefer building to operating. Risk of decision paralysis with two equals. "
+                "\n"
+                "Timeline 5A: Founder A (product genius) and Founder B (technical genius) negotiate structure {structure_decision_5a}. "
+                "Do they hire a CEO {hire_ceo_decision}? If yes: equity split {equity_founder_a_5a}, {equity_founder_b_5a}, {equity_hired_ceo_5a}. "
+                "How much authority do they give hired CEO {ceo_authority}? Month 6: If hired CEO, are they building while CEO sells "
+                "{division_of_labor}? Technical progress {tech_progress}, sales progress {sales_progress}, revenue {mrr_month_6_5a}. "
+                "Month 12: Is hired CEO respecting founders' technical authority {mutual_respect}? Are founders respecting CEO's "
+                "business authority {founder_respect}? Revenue {mrr_month_12_5a}. Series A: Three-way leadership dynamics "
+                "{leadership_health}, investor confidence {series_a_amount_5a} at {valuation_5a}. "
+                "\n"
+                "Timeline 5B: Founder A and Founder B try to co-CEO {co_ceo_structure}. Equity {equity_founder_a_5b}, {equity_founder_b_5b}. "
+                "Month 4: Track decision-making speed {decision_speed}. Who makes final calls {decision_authority}? Month 8: External "
+                "perception—do customers see two CEOs as confusion {customer_confusion}? Month 12: Investor perception {investor_concern}, "
+                "revenue {mrr_month_12_5b}. Does structure work or create paralysis {structure_effectiveness_5b}? "
+                "\n\n"
+                "**ARCHETYPE 6: RETURNED FOUNDER** "
+                "\n"
+                "Personality: Visionary but initially immature. Strong opinions, difficulty compromising. Likely to have board conflicts. "
+                "Could get fired, could mellow during absence, could return seasoned. Long-term arc. "
+                "\n"
+                "Timeline 6A: Founder A starts as CEO {equity_founder_a_initial_6a}. Month 1-12: Track board relationship {board_tension}. "
+                "Founder A's immaturity will likely create conflicts {conflict_events}. Month 14: Board must decide {board_decision_month_14}. "
+                "If fired: hired CEO period Month 15-30. Track: company growth without founder {growth_without_founder}, loss of vision "
+                "{vision_loss}. Does Founder A mature during absence {founder_maturity}? Month 30: If Founder A returns, negotiate new deal "
+                "{equity_founder_a_return}, {title_return}. Track Series B outcome {series_b_amount} at {valuation_6a}. Relationship "
+                "recovery {relationship_recovery}. "
+                "\n"
+                "Timeline 6B: Founder A fired, different outcome {alternative_path_6b}. Does Founder A return or not {return_decision}? If "
+                "not: track hired CEO performance {hired_ceo_performance}, vision execution {vision_without_founder}, long-term "
+                "outcome {outcome_6b}. "
+                "\n\n"
+                "**CRITICAL: All equity percentages, revenue numbers, valuations, relationship scores, and specific outcomes must "
+                "emerge from agent negotiations and decisions. Personality traits shape (but do not dictate) behavior. Structural "
+                "milestones are mandated (MUST negotiate equity by Month 1, MUST reach Series A decision by Month 18), but specific "
+                "terms are non-deterministic. Agents can counter-negotiate, make concessions, or walk away from deals.** "
+                "\n\n"
+                "Track 24 timepoints (24 months) across 12 timelines. Demonstrates M12 (branching personality types), "
+                "M13 (relationship health varies by personality-structure fit), M8 (stress from personality-structure "
+                "mismatch), M7 (causal chains: personality → structure → execution → outcome), M11 (governance conflicts "
+                "and difficult conversations)."
+            ),
+            world_id="timepoint_personality_archetypes",
+            entities=EntityConfig(
+                count=8,  # Founder A + Founder B + hired CEO (some timelines) + COO + investors + board + advisors
+                types=["human"],
+                initial_resolution=ResolutionLevel.TRAINED,
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=24,  # 24 months to cover various personality trajectories
+                resolution="month"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # 12 parallel timelines (6 personalities × 2 structures)
+                enable_counterfactuals=True
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json", "markdown"],
+                include_dialogs=True,  # Governance conflicts, personality clashes
+                include_relationships=True,  # M13: relationship health by personality fit
+                include_knowledge_flow=True,
+                export_ml_dataset=True
+            ),
+            metadata={
+                "analysis_type": "founder_personality_governance_fit_matrix",
+                "personalities_tested": 6,
+                "timelines_total": 12,
+                "profile_refs": [
+                    "charismatic_visionary",
+                    "demanding_genius",
+                    "design_perfectionist",
+                    "young_grower",
+                    "dual_tech_founders",
+                    "returned_founder"
+                ],
+                "key_questions": [
+                    "Which governance structures emerge from each personality type?",
+                    "How do equity negotiations unfold based on founder traits?",
+                    "What role should each founder take based on their archetype?",
+                    "How do personality mismatches affect company outcomes?",
+                    "When should founders hire operational leaders vs stay in charge?"
+                ],
+                "mechanisms_featured": [
+                    "M12_branching_six_personality_types",
+                    "M13_relationship_health_personality_structure_fit",
+                    "M8_embodied_stress_from_mismatched_governance",
+                    "M7_causal_chains_personality_to_outcome",
+                    "M11_governance_conflicts_difficult_conversations"
+                ],
+                "key_insight": "Founder personality determines optimal governance—no one-size-fits-all structure",
+                "meta_lesson": "Personality-structure fit predicts success better than equity split alone",
+                "emergent_format": True,
+                "uses_profile_system": True
+            }
+        )
+
+    @classmethod
+    def timepoint_charismatic_founder_archetype(cls) -> "SimulationConfig":
+        """
+        Charismatic visionary founder archetype: Technical genius + media darling + operational CEO.
+
+        Founder A is a technical genius and media darling. Brilliant, polarizing, creates buzz but also
+        controversies. Three governance experiments: (A) Founder as Chief Scientist + Founder B as
+        Operational CEO (optimal), (B) Founder tries to CEO themselves (disaster), (C) Founder as
+        Chairman + Hired external CEO (board tension). Demonstrates M12 (branching), M13 (relationship
+        health), M8 (stress), M11 (governance conflicts).
+        """
+        return cls(
+            scenario_description=(
+                "**October 2024: The Charismatic Founder Dilemma** - Founder A is a technical genius. At 28, "
+                "they've built Company (17 mechanisms, 95% cost reduction). They're brilliant, charismatic, "
+                "a media darling. TechCrunch covers them extensively. VCs are intrigued. But "
+                "Founder A is also polarizing—tweets controversial takes, burns bridges, thrives on conflict. Founder B "
+                "(co-founder) asks: 'Should you be CEO, or should we find an operator?' Three governance experiments where "
+                "agents decide structure and outcomes emerge from personality dynamics."
+                "\n\n"
+                "**Timeline A: Founder as Chief Scientist + Operational CEO Structure** "
+                "\n"
+                "Founder A and Founder B negotiate governance structure. Founder A argues for leading technical vision, R&D, fundraising, "
+                "and media (their natural strengths). Founder B argues for operational leadership—sales, hiring, P&L, day-to-day "
+                "execution. They must decide: titles {title_founder_a}, {title_founder_b}, equity split {equity_founder_a}, "
+                "{equity_founder_b}, {equity_esop_a}, {equity_investors_a}, and authority boundaries {authority_boundaries}. "
+                "\n"
+                "Month 1: Formation negotiations. Founder A will naturally want visionary role without ops burden. Founder B must "
+                "negotiate real authority—no undermining with team {authority_agreement}. Do they reach clear boundaries "
+                "{boundary_clarity} or leave ambiguity that creates future conflict? "
+                "\n"
+                "Month 3: Founder A will likely pursue media opportunities (keynotes, conferences) given personality {media_engagement_month_3}. "
+                "This generates inbound leads {inbound_leads}. Founder B must convert leads to pilots {pilots_signed}. Revenue "
+                "{mrr_month_3_a}. Do their complementary skills work or create friction {skills_fit_month_3}? "
+                "\n"
+                "Month 6: Founder A's media presence continues {media_activity_month_6}. Given their polarizing nature, they will "
+                "likely make controversial statements {controversial_statements}. How do customers/investors react {market_reaction}? "
+                "Founder B must close deals despite (or because of) Founder A's brand {deals_closed_month_6}. Revenue {mrr_month_6_a}. "
+                "\n"
+                "Month 9: Founder A continues generating buzz but also controversy {controversy_month_9}. Does Founder B successfully "
+                "shield team from drama {team_shield_success} while maintaining execution {execution_health}? Revenue {mrr_month_9_a}. "
+                "\n"
+                "Month 12: Crisis point. If Founder A creates major controversy {crisis_event_month_12}, how does governance structure "
+                "handle it? Does Founder B defend Founder A to board {founder_b_defense} or distance themselves {founder_b_distance}? Board "
+                "response {board_reaction}. Revenue {mrr_month_12_a}, relationship health {relationship_health_month_12_a}. "
+                "\n"
+                "Month 15: Series A pitch preparation. Founder A and Founder B must coordinate pitch {pitch_coordination}. Founder A "
+                "pitches vision {vision_pitch_quality}, Founder B pitches metrics {metrics_pitch_quality}. Do VCs see complementary "
+                "team or misalignment {vc_team_perception}? "
+                "\n"
+                "Month 18: Series A negotiation. Investors make offer {series_a_amount_a} at {valuation_a} based on team "
+                "dynamics, revenue trajectory, and perceived risk. Do Founder A and Founder B accept {deal_acceptance}? Final relationship "
+                "health {relationship_health_month_18_a}, outcome {outcome_a}. "
+                "\n\n"
+                "**Timeline B: Founder Tries to CEO** "
+                "\n"
+                "Different governance negotiation. Founder A argues to be CEO themselves {founder_a_argument_ceo}. Founder B challenges: "
+                "'Are you sure? You hate ops' {founder_b_challenge}. Does Founder A insist {founder_a_insistence}? Equity negotiation "
+                "{equity_founder_a_b}, {equity_founder_b_b}. Role clarity {role_founder_b_b}. "
+                "\n"
+                "Month 1-3: If Founder A is CEO, track time allocation {time_allocation_founder_a}. Given personality, they will "
+                "naturally gravitate toward media/product {natural_gravitation}. Who handles operations {ops_owner}? Does "
+                "Founder B have authority to hire {hiring_authority}? "
+                "\n"
+                "Month 4: Founder A's media presence {media_presence_month_4} vs operational execution {operational_execution_month_4}. "
+                "Revenue {mrr_month_4_b}, pilot customers {pilots_month_4}. Founder B frustration level {founder_b_frustration}. "
+                "\n"
+                "Month 6: Revenue trajectory {mrr_month_6_b}. Investor questions {investor_concerns}: 'Who's running the "
+                "business?' Founder A's response {founder_a_response_investors}. Internal tension {internal_tension_month_6}. "
+                "\n"
+                "Month 8: Critical point. Has sales execution happened {sales_execution}? Board meeting discussion {board_meeting_month_8}. "
+                "Does board intervene {board_intervention}? Founder B demoralization {founder_b_morale}. Revenue {mrr_month_8_b}. "
+                "\n"
+                "Month 10: If board forces restructuring {board_restructuring_decision}, how does Founder A react {founder_a_reaction_demotion}? "
+                "Negotiation of new structure {new_structure_negotiation}. Relationship damage {relationship_health_month_10_b}. "
+                "\n"
+                "Month 12: Post-restructuring dynamics {post_restructure_dynamics}. Founder A engagement level {founder_a_engagement}. "
+                "Revenue {mrr_month_12_b}, company health {company_health_month_12}. "
+                "\n"
+                "Month 15: Founder A decision point {founder_a_decision_stay_or_quit}. If quits, impact on company {impact_founder_a_departure}. "
+                "Final outcome {outcome_b}. "
+                "\n\n"
+                "**Timeline C: Founder as Chairman + Hired External CEO** "
+                "\n"
+                "Third governance option. Board suggests hiring external CEO {board_suggestion_external_ceo}. Founder A and Founder B "
+                "must decide: accept external CEO {accept_external_ceo}, equity split {equity_founder_a_c}, {equity_ceo_hired_c}, "
+                "{equity_founder_b_c}. Hire external CEO (ex-big tech VP) or different profile {ceo_candidate_chosen}. "
+                "\n"
+                "Month 1: Initial structure {initial_structure_c}. Founder A's title {founder_a_title_c}, authority boundaries "
+                "{authority_boundaries_c}. Does Founder A truly give external CEO autonomy {autonomy_granted} or keep control {founder_control_retained}? "
+                "\n"
+                "Month 3: External CEO makes first major decisions {ceo_first_decisions}. Does Founder A agree or privately disagree "
+                "{founder_a_agreement_level}? If disagrees, do they voice concerns {founder_a_voices_concerns} or stay silent {founder_a_stays_silent}? "
+                "\n"
+                "Month 5: If external CEO's decisions don't match Founder A's vision {strategy_misalignment}, tension builds {tension_level_month_5}. "
+                "Revenue {mrr_month_5_c}, burn rate {burn_rate_month_5}, runway {runway_month_5}. Product-market fit {pmf_status}. "
+                "\n"
+                "Month 6: If Founder A vents frustration publicly {public_frustration}, everyone knows it's about external CEO {subtext_clarity}. "
+                "External CEO response {ceo_response_to_undermining}. Escalation {conflict_escalation}. "
+                "\n"
+                "Month 8: Board meeting crisis {board_meeting_crisis}. Founder A criticizes external CEO {founder_a_criticism}, external CEO defends "
+                "authority {ceo_defense}. Board must choose side {board_sides_with}. Relationship health {relationship_health_month_8_c}. "
+                "\n"
+                "Month 10: Does external CEO stay or quit {ceo_decision_stay_or_quit}? If quits, reason {quit_reason}. Board response "
+                "{board_blames}. "
+                "\n"
+                "Month 12: Emergency restructuring {emergency_restructure}. New CEO decision {new_ceo_decision}. Revenue "
+                "{mrr_month_12_c}, relationship damage {relationship_damage_c}, time wasted {time_wasted}. "
+                "\n"
+                "Month 18: Series A outcome after messy transition {series_a_amount_c} at {valuation_c}. Board governance "
+                "changes {board_governance_changes}. Final outcome {outcome_c}. "
+                "\n\n"
+                "**CRITICAL: All equity splits, revenue numbers, relationship scores, decisions (stay/quit/hire/fire), board "
+                "actions, and outcomes are non-deterministic. Personality traits (charismatic, polarizing, media-driven, "
+                "conflict-prone) shape but do not dictate behavior. Structural milestones are mandated (MUST negotiate governance "
+                "by Month 1, MUST handle crisis by Month 12, MUST reach Series A decision by Month 18), but specific choices "
+                "and outcomes emerge from agent negotiations.** "
+                "\n\n"
+                "Track 20 timepoints (20 months). Demonstrates M12 (three governance structures), M13 (relationship health "
+                "emerges from personality-structure fit), M8 (stress from role conflict), M11 (governance conflicts: founder "
+                "vs CEO vs board), M7 (causal chains: governance → culture → execution → outcome)."
+            ),
+            world_id="timepoint_charismatic_founder_archetype",
+            entities=EntityConfig(
+                count=7,  # Founder A + Founder B + hired CEO (timeline C) + 2 board members + 2 investors
+                types=["human"],
+                initial_resolution=ResolutionLevel.DIALOG,  # Governance conflicts need dialog
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=20,  # 20 months to Series A
+                resolution="month"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # Three timelines (optimal, disaster, tension)
+                enable_counterfactuals=True
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json", "markdown"],
+                include_dialogs=True,  # Critical: founder-CEO conflicts, board meetings
+                include_relationships=True,  # M13: relationship health across structures
+                include_knowledge_flow=True,
+                export_ml_dataset=True
+            ),
+            metadata={
+                "analysis_type": "charismatic_founder_governance_archetype",
+                "profile_ref": "charismatic_visionary",
+                "timelines": [
+                    {
+                        "id": "timeline_a_chief_scientist_operational_ceo",
+                        "structure": "Founder Chief Scientist + Operational CEO",
+                        "hypothesis": "Clear role boundaries enable charismatic founder's genius while operational leader shields from chaos"
+                    },
+                    {
+                        "id": "timeline_b_founder_tries_to_ceo",
+                        "structure": "Founder as CEO (Wrong Role)",
+                        "hypothesis": "Media-focused founder in CEO role neglects operations, leading to board intervention"
+                    },
+                    {
+                        "id": "timeline_c_chairman_hired_ceo",
+                        "structure": "Executive Chairman + Hired External CEO",
+                        "hypothesis": "Charismatic founder undermines external CEO when vision misaligns"
+                    }
+                ],
+                "key_questions": [
+                    "What governance structure emerges from charismatic, polarizing founder personality?",
+                    "How do media opportunities affect operational execution?",
+                    "Can charismatic founders delegate authority to external CEOs?",
+                    "What role boundaries prevent conflict between vision and operations?",
+                    "How does founder personality affect Series A outcomes?"
+                ],
+                "mechanisms_featured": [
+                    "M12_branching_three_governance_structures",
+                    "M13_relationship_health_personality_structure_fit",
+                    "M8_embodied_stress_from_role_conflict",
+                    "M11_founder_CEO_board_conflicts",
+                    "M7_causal_chains_governance_to_execution_to_outcome"
+                ],
+                "key_insight": "Charismatic founders need 'Chief Scientist' title + operational CEO to unlock genius",
+                "meta_lesson": "Media-darling founders are liabilities as CEOs but assets as Chief Scientists with boundaries",
+                "emergent_format": True,
+                "uses_profile_system": True
+            }
+        )
+
+    @classmethod
+    def timepoint_demanding_genius_archetype(cls) -> "SimulationConfig":
+        """
+        Demanding genius CEO archetype: Product-obsessed genius + COO "fort holder".
+
+        Founder A is a demanding genius—product-obsessed, chaotic, brilliant, exhausting.
+        They need someone who can "hold down the fort": absorb chaos, translate vision into execution,
+        have thick skin. Three experiments: (A) CEO + Fort-Holder COO (optimal operational executor model),
+        (B) CEO without strong #2 (chaos, turnover, disaster), (C) CEO + Weak COOs (fires 3 in 2 years).
+        Demonstrates M12 (branching), M13 (relationship), M8 (COO stress), M15 (COO deciding to stay/quit).
+        """
+        return cls(
+            scenario_description=(
+                "**October 2024: The Demanding Genius** - Founder A is a product genius. Obsessive, demanding, "
+                "brilliant. They have impossible standards, change direction constantly, fire people mid-project. "
+                "Investors call them 'extraordinarily intense.' Their technical vision is unmatched—Company's "
+                "17 mechanisms are architectural perfection. But they're exhausting to work with. Founder B asks: "
+                "'Do you need someone to hold down the fort while you do your chaos magic?' Three governance experiments "
+                "where agents decide structure, and outcomes (firings, quits, morale, revenue) emerge from personality dynamics."
+                "\n\n"
+                "**Timeline A: CEO + Fort-Holder COO Structure (Testing Operational Executor Model)** "
+                "\n"
+                "Founder A and Founder B negotiate. Founder A will be CEO {equity_founder_a_a}. Founder B proposes COO/President role "
+                "{equity_founder_b_a}. They must agree on equity, ESOP pool {esop_a}, investor allocation {investors_a}, and "
+                "authority boundaries {authority_boundaries_a}. "
+                "\n"
+                "Founder B's Personality: High EQ, thick skin, unflappable, translates chaos into execution, absorbs stress. "
+                "Critical question: Can Founder B handle being fort holder for demanding genius Founder A? "
+                "\n"
+                "Month 1: Founder A makes explicit ask {founder_a_fort_holder_ask}: 'I need you to be my operational fort-holder. I'm going to be "
+                "impossible, and you're going to make it work.' Does Founder B accept {founder_b_acceptance}? What terms {deal_terms}? "
+                "\n"
+                "Month 3: Founder A makes impossible deadline demand {founder_a_deadline_demand}. Realistically how long {realistic_timeline}? "
+                "Team reaction {team_panic_level}. Does Founder B intervene {founder_b_intervention}? How does they translate Founder A's "
+                "demand {founder_b_translation}? Team execution {team_delivery}. Founder A's reaction to partial delivery {founder_a_reaction_delivery}. "
+                "Revenue {mrr_month_3_a}. "
+                "\n"
+                "Month 6: Founder A's demanding nature likely leads to friction {friction_event_month_6}. Does they fire someone "
+                "{founder_a_fires_someone}? If yes: customer impact {customer_impact}, Founder B response {founder_b_salvage_attempt}. "
+                "Does Founder B successfully shield company {shield_success}? Revenue {mrr_month_6_a}. "
+                "\n"
+                "Month 9: Founder A pivots product strategy {pivot_number} time this year. Engineering team exhaustion {team_exhaustion_level}. "
+                "Does Founder B push back on Founder A {founder_b_pushback}? Does Founder A trust Founder B enough to accept delay {founder_a_trust_level}? "
+                "Team recovery {team_recovery_granted}. Revenue {mrr_month_9_a} despite chaos. "
+                "\n"
+                "Month 9 CRITICAL DECISION POINT (M15): Founder B models stay-or-quit decision {founder_b_stay_or_quit_prospection}. "
+                "His stress level {founder_b_stress_month_9}, their sense of impact {founder_b_impact_perception}, relationship with "
+                "Founder A {relationship_quality_month_9}. Does they decide to stay {founder_b_decision_stay}? Reasoning {founder_b_reasoning}. "
+                "\n"
+                "Month 12: Team morale {team_morale_month_12} reflects Founder B's buffering effectiveness. Engineers' perception "
+                "of Founder B {engineer_marcus_perception}. Founder A's perception of Founder B {founder_a_marcus_perception}. Investor "
+                "perception {investor_perception_structure}. Revenue {mrr_month_12_a}. "
+                "\n"
+                "Month 15: Series A pitch preparation. Founder A's vision pitch quality {founder_a_vision_pitch}, Founder B's execution "
+                "pitch quality {founder_b_execution_pitch}. VC perception of team dynamics {vc_team_dynamics_perception}. "
+                "\n"
+                "Month 18: Series A negotiation. Investors make offer {series_a_amount_a} at {valuation_a}. Founder B's equity "
+                "{founder_b_equity_final} reflects their value. Relationship health {relationship_health_month_18_a}, revenue "
+                "{mrr_month_18_a}. "
+                "\n"
+                "Month 24: Long-term outcome. Revenue {mrr_month_24_a}, team size {team_size_month_24}, growth trajectory "
+                "{growth_trajectory}. Founder B's cumulative stress over 2 years {founder_b_cumulative_stress} (M8 tracking). "
+                "Founder A's rare gratitude moment {founder_a_gratitude} if relationship succeeded. Final outcome {outcome_a}, "
+                "valuation trajectory {valuation_trajectory_a}. "
+                "\n\n"
+                "**Timeline B: CEO Without Strong #2** "
+                "\n"
+                "Different structure negotiation. Founder A is CEO {equity_founder_a_b}, Founder B is CTO {equity_founder_b_b}. Founder B "
+                "has technical role but lacks authority to buffer Founder A's chaos {founder_b_authority_b}. "
+                "\n"
+                "Month 1: Initial agreement {initial_agreement_b}. Founder A's view of operations {founder_a_ops_plan}: 'We'll "
+                "figure it out.' Founder B concern level {founder_b_concern_b}. "
+                "\n"
+                "Month 3: Founder A's chaos is unmanaged {chaos_level_month_3}. They makes impossible demand {demand_month_3_b}. "
+                "Team says impossible {team_pushback}. Does Founder A fire people {founder_a_fires_month_3}? If yes, how many "
+                "{firings_count}? Team morale impact {team_morale_month_3_b}. Founder B can't intervene (lacks COO authority) "
+                "{founder_b_intervention_blocked}. "
+                "\n"
+                "Month 4: Team turnover rate {turnover_rate_month_4}. Why do engineers quit {quit_reasons}? Who stays "
+                "{who_remains}? Revenue {mrr_month_4_b}. Sales process existence {sales_process_status}. "
+                "\n"
+                "Month 6: Founder B desperate conversation {founder_b_plea}: Begs Founder A to hire COO. Founder A's response {founder_a_response_coo_plea}. "
+                "Does they accept need for COO {founder_a_accepts_coo} or refuse {founder_a_refuses}? If refuses, their reasoning "
+                "{founder_a_reasoning_refuse}. "
+                "\n"
+                "Month 8: Cumulative turnover {cumulative_turnover_month_8}. Remaining team size {remaining_team_size}. "
+                "Product quality {product_quality_month_8} vs company health {company_health_month_8}. Revenue {mrr_month_8_b}. "
+                "Investor nervous level {investor_concern_month_8}. "
+                "\n"
+                "Month 10: Founder B breaking point {founder_b_breaking_point}. Does Founder B quit {founder_b_quits_month_10}? If yes, "
+                "impact on Founder A {impact_on_sarah}. Does Founder A try to retain him {founder_a_retention_attempt}? Founder A alone scenario "
+                "{founder_a_alone_dynamics}. "
+                "\n"
+                "Month 12: Company state {company_state_month_12}. Revenue {mrr_month_12_b}. If Founder A finally tries to hire "
+                "COO {coo_hire_attempt_late}, does anyone accept {candidate_acceptance} given their reputation {reputation_damage}? "
+                "Series A outcome {series_a_outcome_b}. Final outcome {outcome_b}. "
+                "\n\n"
+                "**Timeline C: CEO + COO Carousel (Multiple COO Attempts)** "
+                "\n"
+                "Founder A is CEO {equity_founder_a_c}. They recognizes need for COO but struggles to find right fit. "
+                "\n"
+                "Month 1: Founder A hires Jamie as COO #1 {equity_jamie}. Jamie's background {jamie_background}, personality "
+                "{jamie_personality}. Does Jamie have fort-holder traits {jamie_fort_holder_traits}? "
+                "\n"
+                "Month 3: Founder A makes demanding request {founder_a_demand_month_3_c}. Jamie's response {jamie_response}. If "
+                "Jamie pushes back {jamie_pushback}, does this create friction {friction_sarah_jamie}? Does Founder A question "
+                "fit {founder_a_questions_jamie}? "
+                "\n"
+                "Month 4: Jamie breaking point {jamie_stress_level}. Does Jamie quit {jamie_quits} or get fired {jamie_fired}? "
+                "Reason {jamie_exit_reason}. Founder A's interpretation {founder_a_interpretation_jamie}. Time wasted {time_wasted_jamie}. "
+                "\n"
+                "Month 7: Founder A hires Taylor as COO #2 {equity_taylor}. Taylor's background {taylor_background}. Equity "
+                "lower than Jamie {equity_decrease_signal}—desperation? Taylor's approach {taylor_management_style}. "
+                "\n"
+                "Month 9: Taylor tries to implement structure {taylor_process_attempts}. Founder A's reaction to process "
+                "{founder_a_reaction_process}. Constant clashes {clash_frequency}. "
+                "\n"
+                "Month 11: Does Founder A fire Taylor {founder_a_fires_taylor} or does Taylor quit {taylor_quits}? Reason {taylor_exit_reason}. "
+                "Revenue {mrr_month_11_c}. Cumulative time wasted {cumulative_time_wasted}. "
+                "\n"
+                "Month 14: Founder A hires Alex as COO #3 {equity_alex}. Even lower equity {equity_trend}—'scraping barrel'? "
+                "Alex's traits {alex_traits}. Does Alex have thick skin {alex_resilience}? "
+                "\n"
+                "Month 18: Does Alex survive {alex_survives}? If yes, at what cost? Company culture damage {culture_damage_month_18}, "
+                "team trust in leadership {leadership_trust}, revenue {mrr_month_18_c} vs potential. "
+                "\n"
+                "Month 24: Series B negotiation. Investor concerns about COO churn {investor_concern_churn}. Offer {series_b_amount_c} "
+                "at {valuation_c}. Alex-Founder A relationship quality {relationship_health_alex_sarah}—transactional {transactional_vs_trust} "
+                "or deep trust? Final outcome {outcome_c}, valuation impact {valuation_gap_vs_optimal}. "
+                "\n\n"
+                "**CRITICAL: All equity splits, revenue numbers, relationship scores, firing decisions, quit decisions, "
+                "team morale, turnover rates, and outcomes are non-deterministic. Founder A's demanding personality shapes "
+                "behavior (will naturally make impossible demands, will likely fire people, will likely create chaos) "
+                "but agents decide specific actions. Founder B/COOs decide to stay or quit based on stress, impact, and "
+                "relationship quality. Structural milestones are mandated (MUST negotiate structure by Month 1, MUST "
+                "handle chaos events as they emerge, MUST reach Series A/B decision points), but specific outcomes emerge "
+                "from agent dynamics.** "
+                "\n\n"
+                "Track 24 timepoints (2 years). Demonstrates M12 (three COO structures), M13 (relationship health emerges "
+                "from fort-holder effectiveness), M8 (COO stress tracked—especially Founder B absorbing Founder A's chaos), M7 "
+                "(causal chains: CEO demanding nature → COO resilience → team morale → execution → outcome), M15 (Month 9: "
+                "Founder B/COOs model stay vs quit decisions through prospection), M11 (difficult conversations: impossible "
+                "demands, firings, quit negotiations)."
+            ),
+            world_id="timepoint_demanding_genius_archetype",
+            entities=EntityConfig(
+                count=9,  # Founder A + Founder B + 3 COOs (timeline C) + 3 engineers + 2 investors
+                types=["human"],
+                initial_resolution=ResolutionLevel.DIALOG,
+                animism_level=0
+            ),
+            timepoints=CompanyConfig(
+                count=24,  # 2 years to Series B
+                resolution="month"
+            ),
+            temporal=TemporalConfig(
+                mode=TemporalMode.BRANCHING,  # Three timelines (optimal, disaster, carousel)
+                enable_counterfactuals=True
+            ),
+            outputs=OutputConfig(
+                formats=["jsonl", "json", "markdown"],
+                include_dialogs=True,  # Founder A-COO conflicts, firing conversations
+                include_relationships=True,  # M13: relationship health across timelines
+                include_knowledge_flow=True,
+                export_ml_dataset=True
+            ),
+            metadata={
+                "analysis_type": "demanding_genius_ceo_fort_holder_archetype",
+                "profile_ref": "demanding_genius",
+                "complementary_profile_ref": "operational_executor",
+                "timelines": [
+                    {
+                        "id": "timeline_a_ceo_fort_holder_coo",
+                        "structure": "CEO + Fort-Holder COO (Operational Executor Model)",
+                        "hypothesis": "Fort-holder COO absorbs chaos, translates into execution, protects team, enables demanding genius"
+                    },
+                    {
+                        "id": "timeline_b_ceo_no_strong_two",
+                        "structure": "CEO Without Strong #2",
+                        "hypothesis": "Without operational buffer, demanding CEO creates team exodus and company failure"
+                    },
+                    {
+                        "id": "timeline_c_ceo_weak_coos_carousel",
+                        "structure": "CEO + COO Carousel (Multiple COO Attempts)",
+                        "hypothesis": "Wrong COO fit leads to churn, wasted time, and reduced valuation potential"
+                    }
+                ],
+                "key_questions": [
+                    "What COO traits enable survival with demanding genius CEO?",
+                    "How does COO stress level affect stay/quit decisions (M15)?",
+                    "What happens when demanding CEO lacks operational buffer?",
+                    "How does COO churn affect company culture and valuation?",
+                    "What equity split reflects fort-holder COO value?"
+                ],
+                "mechanisms_featured": [
+                    "M12_branching_three_coo_structures",
+                    "M13_relationship_health_fort_holder_effectiveness",
+                    "M8_embodied_stress_coo_absorbs_chaos",
+                    "M7_causal_chains_ceo_personality_to_coo_resilience_to_outcome",
+                    "M15_prospection_coo_models_stay_vs_quit_decision",
+                    "M11_difficult_conversations_firings_and_team_conflicts"
+                ],
+                "key_insight": "Demanding geniuses need 'fort holder' COOs with specific traits: thick skin, high EQ, chaos translation",
+                "meta_lesson": "Fort-holder COO model unlocks demanding genius founders—significant equity reflects critical role",
+                "emergent_format": True,
+                "uses_profile_system": True
+            }
         )
 
     def to_dict(self) -> Dict[str, Any]:

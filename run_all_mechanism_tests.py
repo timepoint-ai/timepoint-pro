@@ -192,6 +192,8 @@ def run_all_templates(mode: str = 'quick'):
         ("hospital_crisis", SimulationConfig.example_hospital_crisis(), {"M8", "M14"}),
         ("kami_shrine", SimulationConfig.example_kami_shrine(), {"M16"}),
         ("detective_prospection", SimulationConfig.example_detective_prospection(), {"M15"}),
+        ("vc_pitch_pearl", SimulationConfig.example_vc_pitch_pearl(), {"M7", "M11", "M15"}),
+        ("vc_pitch_roadshow", SimulationConfig.example_vc_pitch_roadshow(), {"M3", "M7", "M10", "M13"}),
     ]
 
     # Full mode: expensive, comprehensive templates
@@ -200,9 +202,29 @@ def run_all_templates(mode: str = 'quick'):
         ("final_problem_branching", SimulationConfig.example_final_problem_branching(), {"M12", "M17", "M15"}),
         ("hound_shadow_directorial", SimulationConfig.example_hound_shadow_directorial(), {"M17", "M10", "M14"}),
         ("sign_loops_cyclical", SimulationConfig.example_sign_loops_cyclical(), {"M17", "M15", "M3"}),
+        ("vc_pitch_branching", SimulationConfig.example_vc_pitch_branching(), {"M12", "M15", "M8", "M17"}),
+        ("vc_pitch_strategies", SimulationConfig.example_vc_pitch_strategies(), {"M12", "M10", "M15", "M17"}),
         # WARNING: These are VERY expensive!
         # ("variations", SimulationConfig.example_variations(), {"M1", "M2"}),  # 100 variations
         # ("scarlet_study_deep", SimulationConfig.example_scarlet_study_deep(), {"M1-M17"}),  # 101 timepoints
+    ]
+
+    # Timepoint Corporate Formation Analysis (new category)
+    timepoint_corporate_templates = [
+        # Corporate formation reverse-engineering (medium cost)
+        ("timepoint_ipo_reverse", SimulationConfig.timepoint_ipo_reverse_engineering(), {"M12", "M15", "M7", "M13", "M11"}),
+        ("timepoint_acquisition_scenarios", SimulationConfig.timepoint_acquisition_scenarios(), {"M12", "M15", "M11", "M8", "M7", "M13"}),
+        ("timepoint_cofounder_configs", SimulationConfig.timepoint_cofounder_configurations(), {"M12", "M13", "M8", "M7", "M11"}),
+        ("timepoint_equity_incentives", SimulationConfig.timepoint_equity_performance_incentives(), {"M12", "M13", "M7", "M15", "M11", "M8"}),
+        ("timepoint_formation_decisions", SimulationConfig.timepoint_critical_formation_decisions(), {"M12", "M7", "M15", "M11"}),
+        ("timepoint_success_vs_failure", SimulationConfig.timepoint_success_vs_failure_paths(), {"M12", "M7", "M13", "M8", "M11", "M15"}),
+        # Emergent growth strategy templates (Phase 5 - new!)
+        ("timepoint_launch_marketing", SimulationConfig.timepoint_launch_marketing_campaigns(), {"M3", "M10", "M14"}),
+        ("timepoint_staffing_growth", SimulationConfig.timepoint_staffing_and_growth(), {"M3", "M10", "M14", "M15"}),
+        # Founder personality × governance structure (expensive, comprehensive)
+        ("timepoint_personality_archetypes", SimulationConfig.timepoint_founder_personality_archetypes(), {"M12", "M13", "M8", "M7", "M11"}),
+        ("timepoint_charismatic_founder", SimulationConfig.timepoint_charismatic_founder_archetype(), {"M12", "M13", "M8", "M11", "M7"}),
+        ("timepoint_demanding_genius", SimulationConfig.timepoint_demanding_genius_archetype(), {"M12", "M13", "M8", "M7", "M15", "M11"}),
     ]
 
     # ANDOS test scripts (always run)
@@ -221,6 +243,15 @@ def run_all_templates(mode: str = 'quick'):
         templates_to_run = quick_templates + full_templates
         print("⚠️  FULL MODE: Running expensive templates!")
         print("   Estimated cost: $20-50, Runtime: 30-60 minutes")
+        print()
+    elif mode == 'timepoint_corporate':
+        templates_to_run = timepoint_corporate_templates
+        print("🏢 TIMEPOINT CORPORATE ANALYSIS MODE")
+        print("   Running 11 Timepoint-specific corporate templates:")
+        print("   - 6 formation analysis templates (IPO, acquisition, cofounder configs, equity, decisions, success/failure)")
+        print("   - 2 emergent growth templates (marketing campaigns, staffing & growth)")
+        print("   - 3 personality × governance templates (archetypes, charismatic founder, demanding genius)")
+        print("   Estimated cost: $10-20, Runtime: 20-40 minutes")
         print()
 
     results = {}
@@ -370,6 +401,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Run all templates including expensive ones (default: quick mode)"
     )
+    parser.add_argument(
+        "--timepoint-corporate-analysis-only",
+        action="store_true",
+        help="Run ONLY Timepoint corporate formation scenarios (VC pitches + formation analysis)"
+    )
     args = parser.parse_args()
 
     # Verify API key
@@ -381,6 +417,13 @@ if __name__ == "__main__":
     print(f"✓ API keys loaded from .env")
     print()
 
-    mode = 'full' if args.full else 'quick'
+    # Determine mode
+    if args.timepoint_corporate_analysis_only:
+        mode = 'timepoint_corporate'
+    elif args.full:
+        mode = 'full'
+    else:
+        mode = 'quick'
+
     success = run_all_templates(mode)
     sys.exit(0 if success else 1)
