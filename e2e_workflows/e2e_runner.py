@@ -775,6 +775,9 @@ class FullE2EWorkflowRunner:
 
         except Exception as e:
             print(f"    ⚠️  Script export failed: {e}")
+            # Print full traceback for debugging
+            import traceback
+            traceback.print_exc()
             # Non-fatal - continue with upload
             return {}
 
@@ -830,8 +833,8 @@ class FullE2EWorkflowRunner:
                     )
                     print(f"  ✓ Repository created")
 
-                # Upload dataset
-                print(f"  Uploading dataset...")
+                # Upload training dataset
+                print(f"  Uploading training dataset...")
                 upload_result = oxen_client.upload_dataset(
                     file_path=str(output_file),
                     commit_message=f"Training data: {len(training_data)} examples from {run_id}",
@@ -839,13 +842,43 @@ class FullE2EWorkflowRunner:
                     create_repo_if_missing=True
                 )
 
-                print(f"  ✓ Upload complete")
+                print(f"  ✓ Training dataset uploaded")
                 print(f"  Repo: {upload_result.repo_url}")
                 print(f"  Dataset: {upload_result.dataset_url}")
 
+                # Upload Fountain script if generated
+                if 'fountain' in script_files and script_files['fountain']:
+                    try:
+                        print(f"  Uploading Fountain script...")
+                        fountain_result = oxen_client.upload_dataset(
+                            file_path=str(script_files['fountain']),
+                            commit_message=f"Fountain screenplay for {run_id}",
+                            dst_path=f"screenplays/{timestamp}/{script_files['fountain'].name}",
+                            create_repo_if_missing=False
+                        )
+                        print(f"  ✓ Fountain script uploaded")
+                    except Exception as e:
+                        print(f"  ⚠️  Fountain upload failed: {e}")
+
+                # Upload PDF script if generated
+                if 'pdf' in script_files and script_files['pdf']:
+                    try:
+                        print(f"  Uploading PDF script...")
+                        pdf_result = oxen_client.upload_dataset(
+                            file_path=str(script_files['pdf']),
+                            commit_message=f"PDF screenplay for {run_id}",
+                            dst_path=f"screenplays/{timestamp}/{script_files['pdf'].name}",
+                            create_repo_if_missing=False
+                        )
+                        print(f"  ✓ PDF script uploaded")
+                    except Exception as e:
+                        print(f"  ⚠️  PDF upload failed: {e}")
+
                 self.logfire.info(
                     "Oxen upload complete",
-                    repo_url=upload_result.repo_url
+                    repo_url=upload_result.repo_url,
+                    fountain_uploaded='fountain' in script_files,
+                    pdf_uploaded='pdf' in script_files
                 )
 
                 return upload_result.repo_url, upload_result.dataset_url

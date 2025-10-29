@@ -18,7 +18,7 @@ from pathlib import Path
 # Ensure we can import from project
 sys.path.insert(0, str(Path(__file__).parent))
 
-from generation.config_schema import SimulationConfig, TemporalConfig, EntityConfig, TimepointConfig
+from generation.config_schema import SimulationConfig, TemporalConfig, EntityConfig, CompanyConfig
 from generation.resilience_orchestrator import ResilientE2EWorkflowRunner
 from metadata.run_tracker import MetadataManager
 from schemas import TemporalMode
@@ -49,7 +49,7 @@ def create_missing_witness_config() -> SimulationConfig:
             allow_animistic=False
         ),
 
-        timepoints=TimepointConfig(
+        timepoints=CompanyConfig(
             count=2
         ),
 

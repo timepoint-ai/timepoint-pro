@@ -188,3 +188,5 @@ cython_debug/
 /outputs
 /outputs
 /datasets
+/checkpoints
+/generation
