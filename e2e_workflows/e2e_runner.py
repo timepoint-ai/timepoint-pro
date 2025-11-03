@@ -18,6 +18,7 @@ import uuid
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 from pathlib import Path
+import json
 
 from generation.config_schema import SimulationConfig
 from orchestrator import simulate_event
@@ -25,6 +26,7 @@ from llm_v2 import LLMClient
 from storage import GraphStore
 from schemas import Entity, Timepoint, TemporalMode, ResolutionLevel
 from workflows import TemporalAgent, create_entity_training_workflow, synthesize_dialog
+from query_interface import QueryInterface
 from oxen_integration import OxenClient
 from oxen_integration.data_formatters import EntityEvolutionFormatter
 from metadata.run_tracker import MetadataManager, RunMetadata
@@ -139,6 +141,11 @@ class FullE2EWorkflowRunner:
 
                 # Step 4.5: Synthesize dialogs (M11)
                 self._synthesize_dialogs(
+                    trained_entities, all_timepoints, scene_result, run_id
+                )
+
+                # Step 4.6: Execute queries (M5)
+                self._execute_queries(
                     trained_entities, all_timepoints, scene_result, run_id
                 )
 
@@ -995,6 +1002,66 @@ class FullE2EWorkflowRunner:
                 "Dialog synthesis complete",
                 dialogs_created=dialogs_created,
                 timepoints_processed=len(timepoints)
+            )
+
+    def _execute_queries(
+        self,
+        entities: List[Entity],
+        timepoints: List[Timepoint],
+        scene_result: Dict,
+        run_id: str
+    ) -> None:
+        """Step 4.6: Execute queries to test lazy resolution (M5)"""
+        with self.logfire.span("step:query_execution"):
+            print("\nStep 4.6: Executing queries (M5 - lazy resolution)...")
+
+            if not entities:
+                print("  ⚠️  No entities - skipping query execution")
+                return
+
+            llm = scene_result["llm_client"]
+            store = scene_result["store"]
+
+            # Create query interface
+            query_interface = QueryInterface(store, llm)
+
+            # Generate 3-5 queries to exercise M5 lazy resolution
+            queries_executed = 0
+            queries_failed = 0
+
+            # Sample entities for queries (up to 3)
+            import random
+            sample_entities = random.sample(entities, min(3, len(entities)))
+
+            for entity in sample_entities:
+                # Generate different query types for each entity
+                query_types = [
+                    f"What did {entity.entity_id.replace('_', ' ')} think about the events?",
+                    f"What actions did {entity.entity_id.replace('_', ' ')} take?",
+                    f"How did {entity.entity_id.replace('_', ' ')} interact with others?"
+                ]
+
+                for query_text in query_types[:2]:  # 2 queries per entity
+                    try:
+                        print(f"  Executing query: {query_text}")
+                        response = query_interface.query(query_text)
+
+                        # Log response summary
+                        response_preview = response[:100] + "..." if len(response) > 100 else response
+                        print(f"    ✓ Response: {response_preview}")
+
+                        queries_executed += 1
+
+                    except Exception as e:
+                        print(f"    ⚠️  Query failed: {e}")
+                        queries_failed += 1
+
+            print(f"✓ Executed {queries_executed} queries ({queries_failed} failed)")
+
+            self.logfire.info(
+                "Query execution complete",
+                queries_executed=queries_executed,
+                queries_failed=queries_failed
             )
 
     def _format_training_data(

@@ -1225,6 +1225,10 @@ class OrchestratorAgent:
             except Exception as e:
                 print(f"   ⚠️  Animistic entity generation failed: {e}")
 
+        # Step 4.7: Check for missing entities (M9 gap detection)
+        print("\n🔍 Step 4.7: Checking for missing entities (M9)...")
+        self._detect_and_generate_missing_entities(spec, save_to_db)
+
         # Step 5: Create Entity objects
         print("\n👥 Step 5: Creating entity objects...")
         entities = self._create_entities(spec, resolution_assignments, exposure_events, context)
@@ -1554,6 +1558,83 @@ class OrchestratorAgent:
                 self.store.save_relationship_trajectory(trajectory)
 
         return trajectories
+
+    def _detect_and_generate_missing_entities(
+        self,
+        spec: SceneSpecification,
+        save_to_db: bool = True
+    ) -> None:
+        """
+        Detect and generate missing entities mentioned in event descriptions (M9).
+
+        Uses QueryInterface to extract entity names from scene/timepoint descriptions
+        and generates any missing numbered entities (e.g., attendee_47).
+        """
+        from query_interface import QueryInterface
+
+        # Create temporary query interface for gap detection
+        query_interface = QueryInterface(self.store, self.llm)
+
+        # Get existing entity IDs from spec
+        existing_entities = set(e.entity_id for e in spec.entities)
+
+        # Collect all text to search for entity mentions
+        texts_to_search = [
+            spec.scene_description,
+            spec.global_context
+        ]
+
+        # Add timepoint descriptions
+        for tp in spec.timepoints:
+            texts_to_search.append(tp.event_description)
+
+        # Detect gaps across all text
+        all_missing = set()
+        for text in texts_to_search:
+            mentioned_entities = query_interface.extract_entity_names(text)
+            missing = mentioned_entities - existing_entities
+            all_missing.update(missing)
+
+        if not all_missing:
+            print("   ✓ No missing entities detected")
+            return
+
+        print(f"   🔍 Found {len(all_missing)} missing entities: {list(all_missing)[:5]}...")
+
+        # Generate missing entities
+        generated_count = 0
+        first_tp_spec = spec.timepoints[0] if spec.timepoints else None
+
+        for entity_id in all_missing:
+            try:
+                # Determine role and context for entity
+                role = "background"  # Default for gap-filled entities
+                description = f"Generated entity: {entity_id.replace('_', ' ')}"
+
+                # Create EntityRosterItem
+                roster_item = EntityRosterItem(
+                    entity_id=entity_id,
+                    entity_type="human",  # Assume human for numbered attendees
+                    role=role,
+                    description=description,
+                    initial_knowledge=[f"Present at {spec.scene_title}"],
+                    relationships={}
+                )
+
+                # Add to spec
+                spec.entities.append(roster_item)
+
+                # Add to first timepoint if exists
+                if first_tp_spec and entity_id not in first_tp_spec.entities_present:
+                    first_tp_spec.entities_present.append(entity_id)
+
+                generated_count += 1
+                print(f"   ✓ Generated missing entity: {entity_id}")
+
+            except Exception as e:
+                print(f"   ⚠️  Failed to generate {entity_id}: {e}")
+
+        print(f"   ✓ Generated {generated_count} missing entities")
 
 
 # ============================================================================
