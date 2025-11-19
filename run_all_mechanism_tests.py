@@ -978,6 +978,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Skip LLM-powered run summaries (reduces cost slightly)"
     )
+    parser.add_argument(
+        "--template",
+        type=str,
+        help="Run a single template by name (e.g. portal_timepoint_product_market_fit)"
+    )
     args = parser.parse_args()
 
     # Handle --list-modes first (doesn't require API key)
@@ -993,6 +998,12 @@ if __name__ == "__main__":
 
     print(f"✓ API keys loaded from .env")
     print()
+
+    # Handle --template mode (single template execution)
+    if args.template:
+        from run_single_template import run_single_template
+        success = run_single_template(args.template, skip_summaries=args.skip_summaries)
+        sys.exit(0 if success else 1)
 
     # Show deprecation warning if old flag is used
     if args.timepoint_corporate_analysis_only:
