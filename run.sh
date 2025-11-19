@@ -29,6 +29,8 @@ MONITOR_INTERVAL=300  # 5 minutes
 LLM_MODEL="meta-llama/llama-3.1-70b-instruct"
 MAX_OUTPUT_TOKENS=300
 MONITOR_MODE="both"  # "both" | "snapshot" | "compare"
+TEMPLATE_NAME=""
+OPEN_DASHBOARD=false
 
 # Colors for output
 RED='\033[0;31m'
@@ -77,6 +79,8 @@ OPTIONS:
     --interval SECONDS     Monitor check interval (default: 300)
     --llm-model MODEL      LLM model for monitor (default: meta-llama/llama-3.1-70b-instruct)
     --monitor-mode MODE    Monitor mode: both|snapshot|compare (default: both)
+    --template NAME        Run a single template by name
+    --open-dashboard       Print dashboard URL after successful run
     --list                 Show all available modes
     -h, --help             Show this help message
 
@@ -238,6 +242,14 @@ while [[ $# -gt 0 ]]; do
             MONITOR_MODE="$2"
             shift 2
             ;;
+        --template)
+            TEMPLATE_NAME="$2"
+            shift 2
+            ;;
+        --open-dashboard)
+            OPEN_DASHBOARD=true
+            shift
+            ;;
         --list)
             show_modes
             exit 0
@@ -260,9 +272,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Check if mode was provided
-if [[ -z "$MODE" ]]; then
-    print_error "No mode specified"
+# Check if mode or template was provided
+if [[ -z "$MODE" && -z "$TEMPLATE_NAME" ]]; then
+    print_error "No mode or template specified"
     echo ""
     show_help
     exit 1
@@ -272,8 +284,13 @@ fi
 # MODE MAPPING
 # ============================================================================
 
-# Map short mode names to run_all_mechanism_tests.py flags
-case "$MODE" in
+# Handle template mode specially
+if [[ -n "$TEMPLATE_NAME" ]]; then
+    TEST_FLAGS="--template $TEMPLATE_NAME"
+    MODE="template:$TEMPLATE_NAME"
+else
+    # Map short mode names to run_all_mechanism_tests.py flags
+    case "$MODE" in
     quick)
         TEST_FLAGS=""
         ;;
@@ -325,7 +342,8 @@ case "$MODE" in
         print_info "Run './run.sh --list' to see all available modes"
         exit 1
         ;;
-esac
+    esac
+fi
 
 # ============================================================================
 # ENVIRONMENT CHECK
