@@ -91,6 +91,9 @@ class FullE2EWorkflowRunner:
         # Initialize shared store for convergence analysis (persists timepoints/events across runs)
         self._shared_store: Optional[GraphStore] = None
 
+        # Phase 1 Tensor Persistence: Initialize dedicated tensor database
+        self._tensor_db = None  # Lazy initialization
+
     def _get_shared_store(self) -> GraphStore:
         """Get or create the shared store for convergence data persistence."""
         if self._shared_store is None:
@@ -98,6 +101,86 @@ class FullE2EWorkflowRunner:
             Path("metadata").mkdir(parents=True, exist_ok=True)
             self._shared_store = GraphStore(f"sqlite:///{SHARED_DB_PATH}")
         return self._shared_store
+
+    def _get_tensor_db(self):
+        """
+        Get or create the dedicated TensorDatabase for tensor persistence.
+
+        Phase 1 Tensor Persistence: Lazy initialization of dedicated tensor storage.
+        Separate from GraphStore to keep tensor blobs isolated from relational data.
+        """
+        if self._tensor_db is None:
+            from tensor_persistence import TensorDatabase
+            # Ensure metadata directory exists
+            Path("metadata").mkdir(parents=True, exist_ok=True)
+            tensor_db_path = "metadata/tensors.db"
+            self._tensor_db = TensorDatabase(tensor_db_path)
+        return self._tensor_db
+
+    def _persist_tensor_to_db(
+        self,
+        entity: Entity,
+        world_id: str,
+        run_id: str
+    ) -> bool:
+        """
+        Persist an entity's tensor to the dedicated TensorDatabase.
+
+        Phase 1 Tensor Persistence: Save tensor with full metadata tracking.
+        This enables:
+        - Pre-trained tensor lookup for future runs
+        - Maturity tracking across training cycles
+        - Version history for debugging
+
+        Args:
+            entity: Entity with tensor data to persist
+            world_id: World/template identifier
+            run_id: Current run identifier
+
+        Returns:
+            True if persisted successfully, False otherwise
+        """
+        try:
+            from tensor_persistence import TensorRecord
+            from tensor_serialization import serialize_tensor
+            from schemas import TTMTensor
+            import json
+            import base64
+
+            # Extract tensor from entity
+            tensor_json = entity.tensor
+            if not tensor_json:
+                return False
+
+            tensor_data = json.loads(tensor_json)
+
+            # Reconstruct TTMTensor from serialized format
+            ttm_tensor = TTMTensor(
+                context_vector=base64.b64decode(tensor_data["context_vector"]),
+                biology_vector=base64.b64decode(tensor_data["biology_vector"]),
+                behavior_vector=base64.b64decode(tensor_data["behavior_vector"])
+            )
+
+            # Create TensorRecord
+            tensor_id = f"{entity.entity_id}_{world_id}_{run_id}"
+            record = TensorRecord(
+                tensor_id=tensor_id,
+                entity_id=entity.entity_id,
+                world_id=world_id,
+                tensor_blob=serialize_tensor(ttm_tensor),
+                maturity=getattr(entity, 'tensor_maturity', 0.0),
+                training_cycles=getattr(entity, 'tensor_training_cycles', 0)
+            )
+
+            # Save to dedicated tensor database
+            tensor_db = self._get_tensor_db()
+            tensor_db.save_tensor(record)
+
+            return True
+
+        except Exception as e:
+            print(f"    ⚠️  Failed to persist tensor for {entity.entity_id}: {e}")
+            return False
 
     def _persist_timepoint_for_convergence(self, timepoint: Timepoint, run_id: str) -> None:
         """
@@ -655,6 +738,11 @@ class FullE2EWorkflowRunner:
                     # Save entity with baseline tensor
                     store.save_entity(entity)
 
+                    # Phase 1 Tensor Persistence: Also persist to dedicated tensor database
+                    config = scene_result.get("config")
+                    world_id = config.world_id if config else "unknown"
+                    self._persist_tensor_to_db(entity, world_id, run_id)
+
                     entities_initialized += 1
                     print(f"  ✓ {entity.entity_id}: baseline tensor created (maturity: 0.0)")
 
@@ -675,6 +763,12 @@ class FullE2EWorkflowRunner:
                         entity.entity_metadata["baseline_initialized"] = False
                         entity.entity_metadata["fallback_tensor"] = True
                         store.save_entity(entity)
+
+                        # Phase 1 Tensor Persistence: Persist fallback tensor too
+                        config = scene_result.get("config")
+                        world_id = config.world_id if config else "unknown"
+                        self._persist_tensor_to_db(entity, world_id, run_id)
+
                         entities_initialized += 1
                         print(f"  ⚠️  {entity.entity_id}: using fallback tensor")
                     except Exception as fallback_err:
@@ -684,6 +778,7 @@ class FullE2EWorkflowRunner:
             if entities_failed > 0:
                 print(f"  ⚠️  {entities_failed} entities used fallback tensors")
             print(f"  📝 Note: LLM-guided population happens during ANDOS training (Step 4)")
+            print(f"  💾 Tensors persisted to dedicated database: metadata/tensors.db")
 
             self.logfire.info(
                 "Baseline tensor initialization complete",
@@ -986,7 +1081,14 @@ class FullE2EWorkflowRunner:
                                 "behavior_vector": base64.b64encode(refined_tensor.behavior_vector).decode('utf-8')
                             })
                             entity.entity_metadata["needs_llm_population"] = False
+                            entity.tensor_maturity = maturity  # Update maturity from LLM population
                             store.save_entity(entity)
+
+                            # Phase 1 Tensor Persistence: Update tensor in dedicated DB after population
+                            cfg = scene_result.get("config")
+                            w_id = cfg.world_id if cfg else "unknown"
+                            self._persist_tensor_to_db(entity, w_id, run_id)
+
                             print(f"       ✓ Populated (maturity: {maturity:.3f})")
                         except Exception as e:
                             print(f"       ⚠️  Population failed: {e}")
@@ -1059,6 +1161,17 @@ class FullE2EWorkflowRunner:
 
             all_entities = list(entity_map.values())
 
+            # Phase 2 Parallel Training: Optional concurrent tensor maturity training
+            config = scene_result.get("config")
+            parallel_training_enabled = getattr(config, 'parallel_training', False) if config else False
+
+            if parallel_training_enabled:
+                self._run_parallel_tensor_training(
+                    entities=all_entities,
+                    scene_result=scene_result,
+                    run_id=run_id
+                )
+
             # PART 3 FIX: Post-training validation - ensure all human entities have physical_tensor
             from schemas import PhysicalTensor
             entities_fixed = 0
@@ -1096,6 +1209,102 @@ class FullE2EWorkflowRunner:
             )
 
             return all_entities
+
+    def _run_parallel_tensor_training(
+        self,
+        entities: List[Entity],
+        scene_result: Dict,
+        run_id: str
+    ) -> None:
+        """
+        Phase 2 Parallel Training: Train all entity tensors concurrently.
+
+        Uses the ParallelTensorTrainer to train multiple tensors to target maturity
+        using asyncio workers. This is optional and enabled via config.parallel_training.
+
+        Args:
+            entities: List of entities with tensors to train
+            scene_result: Scene result with config
+            run_id: Current run ID
+        """
+        import asyncio
+
+        with self.logfire.span("step:parallel_tensor_training"):
+            print("\n  🔄 Phase 2: Parallel tensor maturity training...")
+
+            config = scene_result.get("config")
+            if not config:
+                print("  ⚠️  No config - skipping parallel training")
+                return
+
+            # Get training configuration
+            target_maturity = getattr(config, 'target_tensor_maturity', 0.95)
+            max_workers = getattr(config, 'max_training_workers', 4)
+
+            # Get entities that need training
+            entities_to_train = [
+                e for e in entities
+                if e.entity_metadata.get("needs_training", True)
+                and hasattr(e, 'tensor') and e.tensor
+            ]
+
+            if not entities_to_train:
+                print("  ⚠️  No entities need tensor training")
+                return
+
+            print(f"  Training {len(entities_to_train)} tensors with {max_workers} workers...")
+            print(f"  Target maturity: {target_maturity}")
+
+            try:
+                # Import parallel training
+                from training import train_entities_async
+
+                # Get tensor database
+                tensor_db = self._get_tensor_db()
+                world_id = config.world_id if config else "unknown"
+
+                # Progress tracking
+                progress_updates = []
+
+                def on_progress(tensor_id: str, maturity: float, cycles: int):
+                    if len(progress_updates) % 10 == 0:  # Log every 10 updates
+                        print(f"    Progress: {tensor_id} → maturity {maturity:.3f} ({cycles} cycles)")
+                    progress_updates.append((tensor_id, maturity, cycles))
+
+                # Run parallel training
+                results = asyncio.run(
+                    train_entities_async(
+                        entities=entities_to_train,
+                        tensor_db=tensor_db,
+                        world_id=world_id,
+                        run_id=run_id,
+                        target_maturity=target_maturity,
+                        max_workers=max_workers,
+                        progress_callback=on_progress
+                    )
+                )
+
+                # Report results
+                successful = sum(1 for r in results.values() if r.success)
+                failed = sum(1 for r in results.values() if not r.success)
+
+                print(f"  ✓ Parallel training complete: {successful} succeeded, {failed} failed")
+
+                # Update entity training metadata
+                for entity in entities_to_train:
+                    entity.entity_metadata["needs_training"] = False
+
+                self.logfire.info(
+                    "Parallel tensor training complete",
+                    entities_trained=successful,
+                    entities_failed=failed,
+                    target_maturity=target_maturity,
+                    max_workers=max_workers
+                )
+
+            except Exception as e:
+                print(f"  ⚠️  Parallel training failed: {e}")
+                self.logfire.warn("Parallel tensor training failed", error=str(e))
 
     def _synthesize_dialogs(
         self,
