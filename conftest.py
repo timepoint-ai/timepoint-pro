@@ -448,3 +448,88 @@ def print_test_summary(request):
             print("To calculate total cost:")
             print(f"  cat {log_dir}/*.jsonl | jq -s 'map(.cost_usd) | add'")
             print("="*70)
+
+
+# ============================================================================
+# Shared Fixtures - Tensor Persistence (Phase 1)
+# ============================================================================
+
+@pytest.fixture(scope="function")
+def tensor_db(tmp_path):
+    """
+    Provide a temporary TensorDatabase instance for testing.
+
+    Creates a fresh database in tmp_path, automatically cleaned up after test.
+    """
+    from tensor_persistence import TensorDatabase
+
+    db_path = tmp_path / "tensors_test.db"
+    return TensorDatabase(str(db_path))
+
+
+@pytest.fixture(scope="function")
+def sample_ttm_tensor():
+    """
+    Provide a sample TTMTensor with realistic values for testing.
+
+    Dimensions:
+    - context: 8 (knowledge, information, emotional valence, arousal, etc.)
+    - biology: 4 (age-normalized, health, pain, stamina)
+    - behavior: 8 (personality traits)
+    """
+    import numpy as np
+    from schemas import TTMTensor
+
+    return TTMTensor.from_arrays(
+        context=np.array([0.5, 0.3, 0.7, 0.2, 0.8, 0.4, 0.6, 0.1]),
+        biology=np.array([0.4, 0.9, 0.1, 0.8]),  # Normalized age, health, pain, stamina
+        behavior=np.array([0.6, 0.7, 0.4, 0.5, 0.8, 0.3, 0.7, 0.5]),
+    )
+
+
+@pytest.fixture(scope="function")
+def sample_tensor_record(sample_ttm_tensor):
+    """
+    Provide a sample TensorRecord for database tests.
+
+    Pre-serializes the tensor and sets typical metadata.
+    """
+    from tensor_persistence import TensorRecord
+    from tensor_serialization import serialize_tensor
+
+    return TensorRecord(
+        tensor_id="test-tensor-001",
+        entity_id="test-entity-001",
+        world_id="test-world-001",
+        tensor_blob=serialize_tensor(sample_ttm_tensor),
+        maturity=0.85,
+        training_cycles=10,
+    )
+
+
+@pytest.fixture(scope="session")
+def shared_tensor_db():
+    """
+    Provide a session-scoped shared TensorDatabase for integration tests.
+
+    Persists across multiple tests in a session for testing persistence.
+    """
+    from tensor_persistence import TensorDatabase
+
+    with tempfile.NamedTemporaryFile(suffix='_tensors.db', delete=False) as f:
+        db_path = f.name
+
+    db = TensorDatabase(db_path)
+    yield db
+
+    # Cleanup
+    if os.path.exists(db_path):
+        try:
+            os.unlink(db_path)
+            # Also clean up WAL files
+            for ext in ['-wal', '-shm']:
+                wal_path = db_path + ext
+                if os.path.exists(wal_path):
+                    os.unlink(wal_path)
+        except Exception:
+            pass
