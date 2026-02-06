@@ -71,19 +71,11 @@ class ResponseParser:
                 if self._is_valid_json(json_text):
                     return json_text
 
-        # Try to find JSON object directly
-        # Look for patterns like { ... } or [ ... ]
-        json_patterns = [
-            r'\{[\s\S]*\}',  # Object
-            r'\[[\s\S]*\]',  # Array
-        ]
-
-        for pattern in json_patterns:
-            matches = re.finditer(pattern, text)
-            for match in matches:
-                json_text = match.group(0).strip()
-                if self._is_valid_json(json_text):
-                    return json_text
+        # Try bracket-depth matching to extract JSON object or array
+        # This handles truncated responses, nested structures, and text wrapping
+        extracted = self._extract_by_bracket_matching(text)
+        if extracted is not None:
+            return extracted
 
         # If nothing found, try the whole text
         text_stripped = text.strip()
@@ -207,6 +199,68 @@ class ResponseParser:
             return float(matches[0][0] if isinstance(matches[0], tuple) else matches[0])
 
         raise ParseError(f"No valid number found in: {text}")
+
+    def _extract_by_bracket_matching(self, text: str) -> Optional[str]:
+        """
+        Extract JSON from text using bracket-depth matching.
+
+        Walks the string character-by-character tracking bracket depth,
+        string boundaries, and escape sequences. Returns the first
+        balanced JSON object or array found.
+
+        Args:
+            text: Raw text potentially containing JSON
+
+        Returns:
+            Extracted JSON string, or None if no balanced structure found
+        """
+        # Find first opening bracket
+        start_obj = text.find("{")
+        start_arr = text.find("[")
+
+        if start_obj == -1 and start_arr == -1:
+            return None
+
+        if start_obj == -1:
+            start = start_arr
+        elif start_arr == -1:
+            start = start_obj
+        else:
+            start = min(start_obj, start_arr)
+
+        # Walk forward tracking depth, strings, and escapes
+        depth = 0
+        in_string = False
+        escape_next = False
+
+        for i in range(start, len(text)):
+            char = text[i]
+
+            if escape_next:
+                escape_next = False
+                continue
+
+            if char == "\\" and in_string:
+                escape_next = True
+                continue
+
+            if char == '"':
+                in_string = not in_string
+                continue
+
+            if in_string:
+                continue
+
+            if char in "{[":
+                depth += 1
+            elif char in "}]":
+                depth -= 1
+                if depth == 0:
+                    candidate = text[start:i + 1]
+                    if self._is_valid_json(candidate):
+                        return candidate
+
+        return None
 
     def _is_valid_json(self, text: str) -> bool:
         """Check if text is valid JSON"""
