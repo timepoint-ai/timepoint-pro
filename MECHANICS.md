@@ -901,6 +901,16 @@ entity = service.structured_call_with_action(
 )
 ```
 
+### Response Parsing
+
+`ResponseParser` in `llm_service/response_parser.py` extracts JSON from LLM responses using a three-stage pipeline:
+
+1. **Markdown code blocks** — Matches ` ```json ... ``` ` fences first
+2. **Bracket-depth matching** — Walks the response character-by-character tracking bracket depth, string boundaries (`"..."`), and escape sequences (`\"`) to find the first balanced `{...}` or `[...]` structure
+3. **Whole-text fallback** — Tries `json.loads()` on the stripped response
+
+Bracket-depth matching handles common LLM failure modes: text before/after JSON, truncated responses, brackets inside string values, and nested structures. Failed parses are classified as `INVALID_JSON` by the error handler and retried with exponential backoff.
+
 ### License Compliance
 
 All models in the registry permit commercial use including synthetic data generation:
