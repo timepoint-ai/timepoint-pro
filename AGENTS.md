@@ -158,6 +158,7 @@ All 5 portal scoring methods now use real LLM-based evaluation instead of hardco
 ### Bug Fixes
 - `metadata/narrative_exporter.py`: Added `json.loads()` deserialization for dialog data
 - `metadata/run_summarizer.py`: Fixed dialog turn parsing for narrative summaries
+- `llm_service/response_parser.py`: Replaced greedy regex JSON extraction with bracket-depth matching parser. The old regex (`\{[\s\S]*\}`) failed on truncated responses and text-wrapped JSON; the new `_extract_by_bracket_matching()` tracks bracket depth, string boundaries, and escape sequences character-by-character.
 
 ### NONLINEAR Mode Removed
 Removed the NONLINEAR temporal mode from codebase (was never fully implemented). Now 5 modes: PEARL, DIRECTORIAL, BRANCHING, CYCLICAL, PORTAL.

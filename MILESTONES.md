@@ -71,8 +71,9 @@ Current Architecture:
 │   ├── temporal_agent.py, dialog_synthesis.py, portal_strategy.py
 │   ├── entity_training.py, relationship_analysis.py, prospection.py
 │   └── counterfactual.py, animistic.py, scene_environment.py
-├── llm_service/ — Model selection, providers
+├── llm_service/ — Model selection, providers, response parsing
 │   ├── service.py — LLM facade
+│   ├── response_parser.py — Bracket-depth JSON extraction + Pydantic validation
 │   ├── model_selector.py — M18 implementation
 │   └── providers/ — OpenRouter integration
 ├── nl_interface/ — Natural language input
@@ -491,6 +492,7 @@ Broad accessibility and ecosystem.
 - **Entity persistence to shared DB** (enables cross-run convergence analysis)
 - **All 5 temporal modes fully implemented** (PEARL, DIRECTORIAL, BRANCHING, CYCLICAL, PORTAL)
 - **6 new showcase templates** (3 directorial, 3 cyclical)
+- **Robust JSON extraction** (bracket-depth matching replaces greedy regex in response parser)
 
 **What's missing:** External integrations, containerization, distributed execution.
 
