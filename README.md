@@ -1,8 +1,6 @@
 # Timepoint Daedalus
 
-**[See a complete example run &rarr;](EXAMPLE_RUN.md)** &mdash; Every output from a single PORTAL simulation: timeline, dialogs, knowledge graph, ADPRS waveforms, entity tensors, training data.
-
-**Structured temporal simulation that renders queryable meaning graphs, not prose.**
+**Structured temporal simulation that renders queryable meaning graphs, not prose.** See what a single run actually produces: **[complete example run with every output artifact &rarr;](EXAMPLE_RUN.md)**
 
 An LLM can generate a plausible story about a crew crash-landing on an alien planet. Timepoint generates this:
 
