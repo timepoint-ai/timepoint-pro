@@ -482,6 +482,31 @@ Broad accessibility and ecosystem.
 
 ---
 
+## February 13, 2026: Code Audit and Fix Cycle
+
+An external critique identified real gaps between documentation claims and code behavior. We verified every claim, accepted what was valid, and fixed what was broken — same day.
+
+**Bugs fixed:**
+- M4 "Physics Validation" had an impossible condition (`age < 18 and age > 50`) and only two age checks — rebuilt as real constraint enforcement with resource state validation
+- Training data had zero variance (energy=89.0, arousal=0.15, knowledge=[] in every example) — fixed three bugs in EntityEvolutionFormatter
+- "Quasi-backprop" was random noise injection labeled as training — renamed to "iterative refinement" throughout
+- CYCLICAL mode crashed during prophecy resolution (`list.index()` on objects without equality) — fixed with identity-based lookup
+- `"week"` missing from valid timepoint resolutions — added to config_schema.py
+
+**New capabilities built:**
+- `QuantitativeStateEngine` — deterministic resource propagation per entity per timepoint
+- Outcome-level convergence metrics — role stability, knowledge convergence, outcome similarity
+- Voice distinctiveness scoring — anti-hedging instructions, few-shot character voice examples, post-synthesis validation
+- M4 rebuilt as constraint enforcement with resource state and conservation checks
+
+**Documentation stripped of overclaims:** removed "90+ quantitative variables", fake O2 numbers, "physics validation" labels, misleading cost figures.
+
+**Verified with live LLM calls:** All 21 templates, all 5 temporal modes, 100% pass rate. $4.09 total, 6,279 LLM calls, 94 entities, 169 timepoints, 515 training examples.
+
+**Remaining:** Fine-tuning benchmark (515 training examples generated, blocked on OXEN_API_KEY for actual fine-tuning).
+
+---
+
 ## Reality Check
 
 **Where we are:** Working research prototype with 19 mechanisms, intelligent model selection, parallel execution, **complete tensor persistence system** (329+ tests), **improved data integrity** (January 2026 fixes), **full temporal mode implementations** (February 2026), **full-mechanism showcase template** (Castaway Colony — all 19 mechanisms verified in a single scenario), and **21 verified templates across all 5 temporal modes** (February 13, 2026 — 100% pass rate, $4.09 total cost).
