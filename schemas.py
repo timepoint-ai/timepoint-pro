@@ -16,7 +16,7 @@ class ResolutionLevel(str, Enum):
 
 class TemporalMode(str, Enum):
     """Different causal regimes for temporal reasoning"""
-    PEARL = "pearl"  # Standard causality (no anachronisms, forward flow)
+    FORWARD = "forward"  # Standard causality (no anachronisms, forward flow)
     DIRECTORIAL = "directorial"  # Narrative structure with dramatic tension
     BRANCHING = "branching"  # Many-worlds interpretation
     CYCLICAL = "cyclical"  # Time loops and prophecy
@@ -217,7 +217,7 @@ class Timeline(SQLModel, table=True):
     parent_timeline_id: Optional[str] = Field(default=None, foreign_key="timeline.timeline_id")  # NEW for branching
     branch_point: Optional[str] = Field(default=None)  # Timepoint where branch occurred
     intervention_description: Optional[str] = Field(default=None)  # Description of intervention
-    temporal_mode: TemporalMode = Field(default=TemporalMode.PEARL)  # NEW: Causal regime
+    temporal_mode: TemporalMode = Field(default=TemporalMode.FORWARD)  # NEW: Causal regime
     # Original fields
     timepoint_id: str = Field(unique=True, index=True)
     timestamp: datetime

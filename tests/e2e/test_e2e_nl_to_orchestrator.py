@@ -85,7 +85,7 @@ class TestE2ENLToOrchestrator:
             context={
                 "max_entities": len(config['entities']),
                 "max_timepoints": min(config['timepoint_count'], 3),  # Limit for testing
-                "temporal_mode": config.get('temporal_mode', 'pearl')
+                "temporal_mode": config.get('temporal_mode', 'forward')
             },
             save_to_db=True
         )
@@ -147,7 +147,7 @@ class TestE2ENLToOrchestrator:
             context={
                 "max_entities": len(final_config['entities']),
                 "max_timepoints": min(final_config['timepoint_count'], 3),
-                "temporal_mode": final_config.get('temporal_mode', 'pearl')
+                "temporal_mode": final_config.get('temporal_mode', 'forward')
             },
             save_to_db=True
         )
@@ -190,7 +190,7 @@ class TestE2ENLToOrchestrator:
                 for e in config['entities']
             ],
             timepoint_count=config['timepoint_count'],
-            temporal_mode=config.get('temporal_mode', 'pearl'),
+            temporal_mode=config.get('temporal_mode', 'forward'),
             start_time=config.get('start_time')
         )
 

@@ -94,7 +94,7 @@ class SceneSpecification(BaseModel):
     """Complete scene specification from natural language"""
     scene_title: str
     scene_description: str
-    temporal_mode: str = "pearl"
+    temporal_mode: str = "forward"
     temporal_scope: Dict[str, str]  # start_date, end_date, location
     entities: List[EntityRosterItem]
     timepoints: List[TimepointSpec]
@@ -147,7 +147,7 @@ class SceneParser:
 
     def _build_parsing_prompt(self, event_description: str, context: Dict) -> str:
         """Build prompt for scene parsing"""
-        preferred_mode = context.get("temporal_mode", "pearl")
+        preferred_mode = context.get("temporal_mode", "forward")
         max_entities = context.get("max_entities", 20)
         max_timepoints = context.get("max_timepoints", 10)
 
@@ -169,7 +169,7 @@ Generate a complete scene specification with these components:
 
 1. **Scene Title**: Short descriptive title
 2. **Scene Description**: 2-3 sentence overview
-3. **Temporal Mode**: Choose from: pearl (standard causality), directorial (narrative focus), branching (what-if), cyclical (prophecy/loops), portal (backward from endpoint)
+3. **Temporal Mode**: Choose from: forward (standard causality), directorial (narrative focus), branching (what-if), cyclical (prophecy/loops), portal (backward from endpoint)
    Preferred mode: {preferred_mode}
 4. **Temporal Scope**:
    - start_date: ISO datetime when events begin
@@ -199,7 +199,7 @@ Schema:
 {{
   "scene_title": "string",
   "scene_description": "string",
-  "temporal_mode": "pearl|directorial|branching|cyclical|portal",
+  "temporal_mode": "forward|directorial|branching|cyclical|portal",
   "temporal_scope": {{"start_date": "ISO datetime", "end_date": "ISO datetime", "location": "string"}},
   "entities": [
     {{
@@ -383,7 +383,7 @@ Schema:
         print(f"   ✓ Filled details for {len(filled_timepoints)} timepoints")
 
         # Extract temporal scope from context or use defaults
-        preferred_mode = context.get("temporal_mode", "pearl")
+        preferred_mode = context.get("temporal_mode", "forward")
         temporal_scope = context.get("temporal_scope", {
             "start_date": "2024-01-01T00:00:00",
             "end_date": "2024-12-31T23:59:59",
@@ -806,7 +806,7 @@ Return JSON matching this structure:
         return SceneSpecification(
             scene_title="Test Scene",
             scene_description="A test scene for development purposes",
-            temporal_mode="pearl",
+            temporal_mode="forward",
             temporal_scope={
                 "start_date": "2024-01-01T09:00:00",
                 "end_date": "2024-01-01T17:00:00",

@@ -33,7 +33,7 @@ def test_phase11_simple_scenario():
         world_id="phase11_smoke_test",
         entities=EntityConfig(count=2),
         timepoints=CompanyConfig(count=1),
-        temporal=TemporalConfig(mode=TemporalMode.PEARL),
+        temporal=TemporalConfig(mode=TemporalMode.FORWARD),
         metadata={
             "test": "phase_11_smoke"
         }
