@@ -49,7 +49,7 @@ def test_m14_mechanism_integration():
     metadata_mgr.start_run(
         run_id=run_id,
         template_id="hospital_crisis",
-        causal_mode=TemporalMode.PEARL,
+        causal_mode=TemporalMode.FORWARD,
         max_entities=10,
         max_timepoints=10
     )

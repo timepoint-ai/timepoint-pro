@@ -342,7 +342,7 @@ SHOWCASE - Production Scenarios (10)
   hospital_crisis               ER night shift (M8,M14)
   detective_prospection         Holmes models Moriarty (M15,M7)
   kami_shrine                   Japanese shrine ritual (M16)
-  vc_pitch_pearl                Pre-seed pitch - pearl causality
+  vc_pitch_forward                Pre-seed pitch - forward causality
   vc_pitch_branching            Pre-seed pitch - counterfactual
   vc_pitch_roadshow             Multi-meeting VC roadshow
   vc_pitch_strategies           Multiple negotiation strategies
@@ -1943,7 +1943,7 @@ SHOWCASE_TEMPLATES=(
     "hospital_crisis"
     "detective_prospection"
     "kami_shrine"
-    "vc_pitch_pearl"
+    "vc_pitch_forward"
     "vc_pitch_branching"
     "vc_pitch_roadshow"
     "vc_pitch_strategies"
@@ -2060,7 +2060,7 @@ main() {
         board_meeting|jefferson_dinner|hospital_crisis|detective_prospection|kami_shrine)
             cmd_run "$cmd" "$@"
             ;;
-        vc_pitch_pearl|vc_pitch_branching|vc_pitch_roadshow|vc_pitch_strategies|hound_shadow_directorial|mars_mission_portal|castaway_colony_branching|sec_investigation)
+        vc_pitch_forward|vc_pitch_branching|vc_pitch_roadshow|vc_pitch_strategies|hound_shadow_directorial|mars_mission_portal|castaway_colony_branching|sec_investigation)
             cmd_run "$cmd" "$@"
             ;;
         # Persona templates

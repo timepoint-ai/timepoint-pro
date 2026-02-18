@@ -27,7 +27,7 @@ class SimulationStatus(str, Enum):
 
 class TemporalModeAPI(str, Enum):
     """Temporal mode options for API."""
-    PEARL = "pearl"
+    FORWARD = "forward"
     DIRECTORIAL = "directorial"
     CYCLICAL = "cyclical"
     BRANCHING = "branching"
@@ -72,7 +72,7 @@ class SimulationCreateRequest(BaseModel):
         description="Number of timepoints to generate (1-20)"
     )
     temporal_mode: TemporalModeAPI = Field(
-        default=TemporalModeAPI.PEARL,
+        default=TemporalModeAPI.FORWARD,
         description="Temporal reasoning mode"
     )
 

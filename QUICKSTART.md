@@ -155,7 +155,7 @@ Each mode changes what "time" means and how the simulation validates consistency
 
 | Mode | Description | Use Case | Example Template |
 |------|-------------|----------|------------------|
-| `pearl` | Standard causality, no time paradoxes | Default, most realistic | `board_meeting` |
+| `forward` | Standard causality, no time paradoxes | Default, most realistic | `board_meeting` |
 | `portal` | Backward reasoning from known outcomes | "How did we get here?" scenarios | `mars_mission_portal` |
 | `directorial` | Narrative-focused with dramatic tension | Stories, character arcs | `hound_shadow_directorial` |
 | `cyclical` | Allows prophecy and time loops | Sci-fi, mystical, generational | (no verified templates) |
@@ -163,7 +163,7 @@ Each mode changes what "time" means and how the simulation validates consistency
 
 ### Choosing a Mode
 
-**Use PEARL when:** You want realistic forward simulation. Causes precede effects. Knowledge flows forward. No magic, no paradoxes. This is the default for business scenarios, historical reconstruction, training data generation.
+**Use FORWARD when:** You want realistic forward simulation. Causes precede effects. Knowledge flows forward. No magic, no paradoxes. This is the default for business scenarios, historical reconstruction, training data generation.
 
 **Use PORTAL when:** You know the endpoint and want to discover paths there. "What decisions lead to a $1B exit?" "What events preceded this crisis?" Works backward from a fixed future, finding plausible routes from the present.
 
@@ -332,7 +332,7 @@ python persona_chat.py --persona AGENT4 --context MECHANICS.md --model anthropic
 |----|------|--------|----------------|
 | AGENT1 | Victoria Langford-Chen | Corporate Finance / Regulatory | `persona/agent1_regulatory_stress` (PORTAL) |
 | AGENT2 | Dr. Raj Venkataraman | Aerospace / Mission Assurance | `persona/agent2_mission_failure` (BRANCHING) |
-| AGENT3 | Marcus Delgado-Washington | Legal Tech Startup | `persona/agent3_litigation_discovery` (PEARL) |
+| AGENT3 | Marcus Delgado-Washington | Legal Tech Startup | `persona/agent3_litigation_discovery` (FORWARD) |
 | AGENT4 | Dr. Kate Nez-Bridger | Wildlife Ecology / RMEF | `persona/agent4_elk_migration` (CYCLICAL) |
 
 **Post-run analysis — run a persona template, then chat about the output:**
