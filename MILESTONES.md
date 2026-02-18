@@ -14,7 +14,7 @@
 
 Temporal simulation isn't one problem—it's five different problems depending on what "time" means in your domain:
 
-1. **Forward causality** (PEARL): History unfolds, causes precede effects. Standard simulation.
+1. **Forward causality** (FORWARD): History unfolds, causes precede effects. Standard simulation.
 2. **Backward inference** (PORTAL): Given a known outcome, what paths lead there? Strategic planning.
 3. **Counterfactuals** (BRANCHING): What if X had happened instead? Parallel timelines.
 4. **Cycles and prophecy** (CYCLICAL): Time loops, generational patterns, self-fulfilling predictions.
@@ -34,7 +34,7 @@ Each mode has its own validation rules, fidelity allocation strategy, and genera
 - **Free model support** — `--free`, `--free-fast`, `--list-free-models` for $0 cost testing
 
 **Full Temporal Mode Coverage (February 2026):**
-- **PEARL mode** — Standard forward simulation with strict causality
+- **FORWARD mode** — Standard forward simulation with strict causality
 - **PORTAL mode** — Backward temporal reasoning with pivot detection and path divergence analysis
 - **BRANCHING mode** — Counterfactual timeline generation with branch point allocation
 - **CYCLICAL mode** — Prophecy system, causal loops, cycle semantics interpretation (repeating/spiral/oscillating)
@@ -526,7 +526,7 @@ An external critique identified real gaps between documentation claims and code 
 - **Portal mode enhancements** (preserve all paths, divergence detection, quick mode, fidelity scaling)
 - **Data quality validation** (empty entities_present detection, entity reference validation)
 - **Entity persistence to shared DB** (enables cross-run convergence analysis)
-- **All 5 temporal modes fully implemented** (PEARL, DIRECTORIAL, BRANCHING, CYCLICAL, PORTAL)
+- **All 5 temporal modes fully implemented** (FORWARD, DIRECTORIAL, BRANCHING, CYCLICAL, PORTAL)
 - **21 verified templates total** (12 showcase, 5 persona, 3 convergence, 1 comprehensive convergence)
 - **Robust JSON extraction** (bracket-depth matching replaces greedy regex in response parser)
 - **Arousal decay system** (exponential decay prevents emotional saturation at 1.0)

@@ -49,7 +49,7 @@ class NLToProductionAdapter:
 
     # Map NL temporal modes to production TemporalMode enum
     TEMPORAL_MODE_MAP = {
-        "pearl": TemporalMode.PEARL,
+        "forward": TemporalMode.FORWARD,
         "directorial": TemporalMode.DIRECTORIAL,
         "branching": TemporalMode.BRANCHING,
         "cyclical": TemporalMode.CYCLICAL,
@@ -166,8 +166,8 @@ class NLToProductionAdapter:
 
     def _build_temporal_config(self, nl_config: Dict[str, Any]) -> TemporalConfig:
         """Convert NL temporal_mode to TemporalConfig."""
-        mode_str = nl_config.get("temporal_mode", "pearl").lower()
-        mode = self.TEMPORAL_MODE_MAP.get(mode_str, TemporalMode.PEARL)
+        mode_str = nl_config.get("temporal_mode", "forward").lower()
+        mode = self.TEMPORAL_MODE_MAP.get(mode_str, TemporalMode.FORWARD)
 
         config_kwargs = {"mode": mode}
 

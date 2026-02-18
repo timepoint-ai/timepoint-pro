@@ -43,7 +43,7 @@ def create_alternate_history_config() -> SimulationConfig:
         scenario_description=scenario.strip(),
 
         temporal=TemporalConfig(
-            mode=TemporalMode.PEARL,
+            mode=TemporalMode.FORWARD,
             use_agent=True
         ),
 

@@ -58,7 +58,7 @@ advocates for equal representation for all states regardless of size."""
         context={
             "max_entities": 2,
             "max_timepoints": 1,
-            "temporal_mode": TemporalMode.PEARL.value
+            "temporal_mode": TemporalMode.FORWARD.value
         },
         save_to_db=True
     )
@@ -72,7 +72,7 @@ advocates for equal representation for all states regardless of size."""
     # Generate one more timepoint for T0->T1 transition
     print("\n2. Generating second timepoint (for evolution)...")
     temporal_agent = TemporalAgent(
-        mode=TemporalMode.PEARL,
+        mode=TemporalMode.FORWARD,
         store=store,
         llm_client=llm
     )
