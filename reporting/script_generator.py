@@ -88,7 +88,7 @@ class ScriptData:
     title: str
     world_id: str
     generated_at: datetime
-    temporal_mode: str = "pearl"
+    temporal_mode: str = "forward"
     scenes: List[Scene] = field(default_factory=list)
     characters: List[Character] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -120,7 +120,7 @@ class ScriptGenerator:
         self,
         world_id: str,
         title: Optional[str] = None,
-        temporal_mode: str = "pearl"
+        temporal_mode: str = "forward"
     ) -> ScriptData:
         """
         Generate complete screenplay structure from database.
@@ -128,7 +128,7 @@ class ScriptGenerator:
         Args:
             world_id: World/simulation identifier (typically first timepoint_id)
             title: Script title (auto-generated if None)
-            temporal_mode: Temporal mode (pearl, directorial, branching, etc.)
+            temporal_mode: Temporal mode (forward, directorial, branching, etc.)
 
         Returns:
             ScriptData with scenes, characters, dialog
@@ -190,7 +190,7 @@ class ScriptGenerator:
         entities: List[Any],
         world_id: str,
         title: Optional[str] = None,
-        temporal_mode: str = "pearl"
+        temporal_mode: str = "forward"
     ) -> ScriptData:
         """
         Generate complete screenplay structure from in-memory data.
@@ -203,7 +203,7 @@ class ScriptGenerator:
             entities: List of Entity objects
             world_id: World/simulation identifier
             title: Script title (auto-generated if None)
-            temporal_mode: Temporal mode (pearl, directorial, branching, etc.)
+            temporal_mode: Temporal mode (forward, directorial, branching, etc.)
 
         Returns:
             ScriptData with scenes, characters, dialog
@@ -289,10 +289,10 @@ class ScriptGenerator:
         """
         Order timepoints based on temporal mode and causal relationships.
 
-        - Pearl: Chronological order following causal_parent
+        - Forward: Chronological order following causal_parent
         - Directorial: Order by dramatic tension
         """
-        if temporal_mode == "pearl":
+        if temporal_mode == "forward":
             # Standard chronological order
             return self._order_chronologically(timepoints)
         elif temporal_mode == "directorial":

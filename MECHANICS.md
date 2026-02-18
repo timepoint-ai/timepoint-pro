@@ -8,7 +8,7 @@ MECHANICS
 Five pillars:
 
 Fidelity Management: Resolution is heterogeneous and query-driven. Entities range from TENSOR_ONLY (~200 tokens) to TRAINED (~50k tokens). Queries trigger lazy elevation; disuse allows compression. Cost scales with attention, not simulation size.
-Temporal Reasoning: Time has modes. PEARL (standard causality), PORTAL (backward inference from endpoints), BRANCHING (counterfactuals), CYCLICAL (prophecy), etc. Each mode changes what "consistency" means and how validation works.
+Temporal Reasoning: Time has modes. FORWARD (standard causality), PORTAL (backward inference from endpoints), BRANCHING (counterfactuals), CYCLICAL (prophecy), etc. Each mode changes what "consistency" means and how validation works.
 Knowledge Provenance: Entities can't magically know things. Knowledge has tracked exposure events (who learned what, from whom, when). This enables causal audit, prevents anachronisms structurally, and supports counterfactual reasoning.
 Entity Simulation: On-demand entity generation, scene-level collective behavior, dialog synthesis with full context, relationship evolution tracking, prospection (entities modeling their futures), and animistic agency (objects/institutions that "want" things).
 Infrastructure: Intelligent model selection (M18) matches actions to optimal LLMs—math-heavy tasks use reasoning models, dialog uses conversational models, with automatic fallbacks and license compliance for commercial synthetic data.
@@ -182,7 +182,7 @@ Five temporal modes, each defining what "consistency" means:
 
 ```python
 class TemporalMode(Enum):
-    PEARL = "pearl"           # Standard causal DAG—causes precede effects
+    FORWARD = "forward"           # Standard causal DAG—causes precede effects
     DIRECTORIAL = "directorial"  # Narrative time with flashbacks, ellipsis
     BRANCHING = "branching"      # Counterfactual timelines diverge from decision points
     CYCLICAL = "cyclical"        # Prophetic/mythic time—future constrains past
@@ -1082,7 +1082,7 @@ M1 (fidelity) and M17 (temporal mode) aren't independent—they co-determine res
 
 ## The Integration Problem
 
-PORTAL mode needs more tokens than PEARL (backward inference is complex). Entity importance depends on temporal structure. Token budgets must adapt to mode complexity.
+PORTAL mode needs more tokens than FORWARD (backward inference is complex). Entity importance depends on temporal structure. Token budgets must adapt to mode complexity.
 
 ## FidelityTemporalStrategy
 
@@ -1093,7 +1093,7 @@ FidelityTemporalStrategy:
     entity_resolution_map: Dict[str, ResolutionLevel]
     timepoint_resolution_map: Dict[str, ResolutionLevel]
     token_budget: Optional[int]
-    temporal_mode_complexity: float  # PORTAL=1.5, PEARL=1.0
+    temporal_mode_complexity: float  # PORTAL=1.5, FORWARD=1.0
     planning_mode: FidelityPlanningMode  # PROGRAMMATIC | ADAPTIVE | HYBRID
     budget_mode: TokenBudgetMode  # HARD_CONSTRAINT | SOFT_GUIDANCE | MAX_QUALITY
 ```
@@ -1113,7 +1113,7 @@ Pre-configured strategies for common scenarios:
 
 ```python
 complexity_map = {
-    PEARL: 1.0,        # Baseline
+    FORWARD: 1.0,        # Baseline
     DIRECTORIAL: 1.2,  # Narrative structure overhead
     BRANCHING: 1.4,    # Multiple timelines
     CYCLICAL: 1.3,     # Prophecy validation
@@ -1262,7 +1262,6 @@ Global:          Multi-region with coordination
 
 # References
 
-- Pearl, J. (2009). *Causality: Models, Reasoning, and Inference*
 - Shannon, C. E. (1948). A Mathematical Theory of Communication
 - Schölkopf, B., et al. (2021). Toward Causal Representation Learning
 - Vaswani, A., et al. (2017). Attention Is All You Need

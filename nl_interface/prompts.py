@@ -16,13 +16,13 @@ The configuration must match this schema:
 - scenario: string (descriptive title)
 - entities: list of objects with {name, role, optional: personality_traits}
 - timepoint_count: integer (1-100)
-- temporal_mode: one of ["pearl", "directorial", "branching", "cyclical", "portal"]
+- temporal_mode: one of ["forward", "directorial", "branching", "cyclical", "portal"]
 - focus: list of strings (e.g., ["dialog", "decision_making", "relationships"])
 - outputs: list of strings (e.g., ["dialog", "decisions", "relationships", "knowledge_flow"])
 - optional: start_time (ISO datetime), animism_level (0-3), resolution_mode
 
 Temporal modes explained:
-- pearl: Standard causal DAG (historical realism)
+- forward: Standard causal DAG (historical realism)
 - directorial: Narrative-driven (dramatic coherence)
 - branching: Many-worlds counterfactuals
 - cyclical: Time loops and prophecy
@@ -51,7 +51,7 @@ FEW_SHOT_EXAMPLES = [
                 {"name": "Lisa Anderson", "role": "Finance Director"}
             ],
             "timepoint_count": 5,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog", "decision_making", "relationships"],
             "outputs": ["dialog", "decisions", "relationships"],
             "resolution_mode": "progressive"
@@ -75,7 +75,7 @@ FEW_SHOT_EXAMPLES = [
             ],
             "timepoint_count": 15,
             "start_time": "1787-05-25T10:00:00",
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog", "decision_making", "knowledge_propagation"],
             "outputs": ["dialog", "decisions", "knowledge_flow"],
             "resolution_mode": "progressive"
@@ -93,7 +93,7 @@ FEW_SHOT_EXAMPLES = [
             ],
             "timepoint_count": 10,
             "start_time": "1970-04-13T19:00:00",
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["decision_making", "stress_responses", "dialog"],
             "outputs": ["dialog", "decisions"],
             "resolution_mode": "progressive"
@@ -111,7 +111,7 @@ FEW_SHOT_EXAMPLES = [
             ],
             "timepoint_count": 8,
             "start_time": "1775-04-18T22:00:00",
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["knowledge_propagation"],
             "outputs": ["knowledge_flow"],
             "animism_level": 2,
@@ -127,7 +127,7 @@ FEW_SHOT_EXAMPLES = [
                 {"name": "Jordan Smith", "role": "Candidate"}
             ],
             "timepoint_count": 3,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog", "relationships"],
             "outputs": ["dialog"],
             "generation_mode": "horizontal",
@@ -185,14 +185,14 @@ All configurations must include:
 - scenario (string)
 - entities (list of objects with name and role)
 - timepoint_count (integer 1-100)
-- temporal_mode (one of: pearl, directorial, branching, cyclical, portal)
+- temporal_mode (one of: forward, directorial, branching, cyclical, portal)
 - focus (list of strings)
 - outputs (list of strings)
 
 Try again with this description: {description}""",
 
     "invalid_temporal_mode": """The temporal_mode "{mode}" is invalid. Must be one of:
-- pearl (standard causal, for historical realism)
+- forward (standard causal, for historical realism)
 - directorial (narrative-driven, for dramatic coherence)
 - branching (many-worlds counterfactuals)
 - cyclical (time loops, prophecy)

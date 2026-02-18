@@ -70,7 +70,7 @@ def sample_spec():
     return SceneSpecification(
         scene_title="Test Constitutional Convention",
         scene_description="Founding fathers debate the constitution in Philadelphia",
-        temporal_mode="pearl",
+        temporal_mode="forward",
         temporal_scope={
             "start_date": "1787-05-25T09:00:00",
             "end_date": "1787-09-17T17:00:00",
@@ -177,7 +177,7 @@ class TestSceneParser:
 
         assert isinstance(spec, SceneSpecification)
         assert spec.scene_title
-        assert spec.temporal_mode in ["pearl", "directorial", "branching", "cyclical", "portal"]
+        assert spec.temporal_mode in ["forward", "directorial", "branching", "cyclical", "portal"]
         assert len(spec.entities) > 0
         assert len(spec.timepoints) > 0
 
@@ -408,7 +408,7 @@ class TestEndToEnd:
             "simulate the constitutional convention in the united states",
             llm_client,
             store,
-            context={"temporal_mode": "pearl", "max_entities": 10, "max_timepoints": 5},
+            context={"temporal_mode": "forward", "max_entities": 10, "max_timepoints": 5},
             save_to_db=True
         )
 
@@ -433,7 +433,7 @@ class TestEndToEnd:
             real_llm_client,
             store,
             context={
-                "temporal_mode": "pearl",
+                "temporal_mode": "forward",
                 "max_entities": 8,
                 "max_timepoints": 5
             },
@@ -466,7 +466,7 @@ class TestEndToEnd:
     @pytest.mark.real_llm
     def test_different_temporal_modes(self, real_llm_client, store):
         """Test different temporal modes"""
-        modes = ["pearl", "directorial", "cyclical"]
+        modes = ["forward", "directorial", "cyclical"]
 
         for mode in modes:
             # Clear database between tests

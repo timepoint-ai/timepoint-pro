@@ -34,7 +34,7 @@ def create_minimal_config() -> SimulationConfig:
         scenario_description=scenario.strip(),
 
         temporal=TemporalConfig(
-            mode=TemporalMode.PEARL,
+            mode=TemporalMode.FORWARD,
         ),
 
         entities=EntityConfig(

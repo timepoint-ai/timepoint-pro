@@ -1319,7 +1319,7 @@ def validate_temporal_consistency(
     # Get parameters from context
     knowledge_item = context.get("knowledge_item")
     timepoint = context.get("timepoint")
-    mode = context.get("mode", "pearl")
+    mode = context.get("mode", "forward")
 
     # If no knowledge_item or timepoint specified, skip validation
     if not knowledge_item or not timepoint:
@@ -1328,10 +1328,10 @@ def validate_temporal_consistency(
     learned_at = None  # Would need to query from store in real implementation
 
     # Simplified version - in practice would need access to exposure events
-    if mode == "pearl":
+    if mode == "forward":
         # Strict forward causality - no anachronisms
         # This would check if learned_at.timestamp > timepoint.timestamp
-        return {"valid": True, "message": "Pearl mode: Forward causality maintained"}
+        return {"valid": True, "message": "Forward mode: Forward causality maintained"}
 
     elif mode == "cyclical":
         # Allow future knowledge if part of closed loop
