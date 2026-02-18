@@ -7,7 +7,7 @@
 **Design Principles**:
 - **Fidelity follows attention**: Resolution is heterogeneous and query-driven. Most entities stay at TENSOR_ONLY (~200 tokens). Detail concentrates where queries land.
 - **Knowledge has provenance**: Entities can't magically know things. Every fact has a tracked exposure event (who learned what, from whom, when).
-- **Modes change semantics**: PEARL mode forbids anachronisms. CYCLICAL mode permits bootstrap paradoxes. DIRECTORIAL mode allows dramatic coincidences. Each mode has its own validation rules.
+- **Modes change semantics**: FORWARD mode forbids anachronisms. CYCLICAL mode permits bootstrap paradoxes. DIRECTORIAL mode allows dramatic coincidences. Each mode has its own validation rules.
 - **Templates are patches**: Like a synthesizer, scenarios are saved configurations. JSON templates capture reproducible "sounds" (scenario shapes).
 
 **Code Philosophy**:
@@ -32,7 +32,7 @@ Each mode has a dedicated strategy class in `workflows/`:
 
 | Mode | Strategy Class | Key Affordance |
 |------|---------------|----------------|
-| PEARL | (default forward) | Strict causality, knowledge provenance |
+| FORWARD | (default forward) | Strict causality, knowledge provenance |
 | PORTAL | `PortalStrategy` | Backward inference, pivot detection |
 | BRANCHING | `BranchingStrategy` | Counterfactual timelines |
 | DIRECTORIAL | `DirectorialStrategy` | Five-act arcs, camera system, dramatic irony |
@@ -177,7 +177,7 @@ All 5 portal scoring methods now use real LLM-based evaluation instead of hardco
 - `run.sh`: Added `castaway_colony_branching` to SHOWCASE_TEMPLATES array and dispatch case.
 
 ### NONLINEAR Mode Removed
-Removed the NONLINEAR temporal mode from codebase (was never fully implemented). Now 5 modes: PEARL, DIRECTORIAL, BRANCHING, CYCLICAL, PORTAL.
+Removed the NONLINEAR temporal mode from codebase (was never fully implemented). Now 5 modes: FORWARD, DIRECTORIAL, BRANCHING, CYCLICAL, PORTAL.
 
 ### Branching Quality & Scenario Anchoring (February 2026)
 

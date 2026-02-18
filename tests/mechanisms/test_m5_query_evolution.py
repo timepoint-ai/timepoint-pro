@@ -38,7 +38,7 @@ def create_query_evolution_config() -> SimulationConfig:
         scenario_description=scenario.strip(),
 
         temporal=TemporalConfig(
-            mode=TemporalMode.PEARL,
+            mode=TemporalMode.FORWARD,
             use_agent=True
         ),
 

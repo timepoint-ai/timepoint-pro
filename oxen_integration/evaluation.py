@@ -438,7 +438,7 @@ Configuration requirements:
 - Entities: {config.get('num_entities', 5)}
 - Timepoints: {config.get('num_timepoints', 3)}
 - Resolution: {config.get('resolution', 'hour')}
-- Mode: {config.get('mode', 'pearl')}
+- Mode: {config.get('mode', 'forward')}
 
 Provide the configuration in JSON format."""
 

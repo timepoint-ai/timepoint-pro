@@ -193,7 +193,7 @@ ai_entity_service:
 
 # Mechanism 17: Modal Temporal Causality
 temporal_mode:
-  active_mode: pearl  # Default: "pearl", "directorial", "branching", "cyclical", "portal"
+  active_mode: forward  # Default: "forward", "directorial", "branching", "cyclical", "portal"
   directorial:
     narrative_arc: "rising_action"  # rising_action, climax, falling_action, resolution
     dramatic_tension: 0.7  # 0.0-1.0 tension level

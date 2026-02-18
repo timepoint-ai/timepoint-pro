@@ -483,7 +483,7 @@ class TestHorizontalGenerationIntegration:
             world_id="negotiation_variations",
             entities=EntityConfig(count=4, types=["human"]),
             timepoints=CompanyConfig(count=2, resolution="hour"),
-            temporal=TemporalConfig(mode=TemporalMode.PEARL),
+            temporal=TemporalConfig(mode=TemporalMode.FORWARD),
             outputs=OutputConfig(
                 formats=["jsonl"],
                 export_ml_dataset=True

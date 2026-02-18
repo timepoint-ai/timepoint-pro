@@ -40,7 +40,7 @@ def create_scene_analysis_config() -> SimulationConfig:
         scenario_description=scenario.strip(),
 
         temporal=TemporalConfig(
-            mode=TemporalMode.PEARL,
+            mode=TemporalMode.FORWARD,
             use_agent=True
         ),
 

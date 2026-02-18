@@ -151,7 +151,7 @@ class ClarificationEngine:
                     field="temporal_mode",
                     question="What temporal causality mode should be used?",
                     suggestions=[
-                        "pearl - Standard causal (historical realism)",
+                        "forward - Standard causal (historical realism)",
                         "branching - Multiple timelines/what-if scenarios",
                         "directorial - Narrative-driven (dramatic coherence)"
                     ],
@@ -255,11 +255,11 @@ class ClarificationEngine:
 
     def _has_temporal_mode_hint(self, description: str) -> bool:
         """Check if description hints at temporal mode"""
-        pearl_hints = ["historical", "realistic", "causal"]
+        forward_hints = ["historical", "realistic", "causal"]
         branching_hints = ["alternate", "what if", "counterfactual", "branching", "timeline"]
         directorial_hints = ["narrative", "dramatic", "story"]
 
-        all_hints = pearl_hints + branching_hints + directorial_hints
+        all_hints = forward_hints + branching_hints + directorial_hints
         return any(hint in description for hint in all_hints)
 
     def _has_output_preference(self, description: str) -> bool:

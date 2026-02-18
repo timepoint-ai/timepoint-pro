@@ -37,7 +37,7 @@ class SimulationJob:
     description: Optional[str] = None
     entity_count: int = 4
     timepoint_count: int = 5
-    temporal_mode: str = "pearl"
+    temporal_mode: str = "forward"
     generate_summaries: bool = True
     export_formats: list = field(default_factory=lambda: ["json", "markdown"])
     metadata: Optional[Dict[str, Any]] = None

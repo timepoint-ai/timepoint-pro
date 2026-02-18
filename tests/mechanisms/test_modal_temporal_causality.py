@@ -17,7 +17,7 @@ class ModalTemporalCausalitySystem:
     def __init__(self, store=None, llm_client=None):
         self.store = store
         self.llm_client = llm_client
-        self.current_mode = TemporalMode.PEARL
+        self.current_mode = TemporalMode.FORWARD
         self.agents = {}
 
     def set_mode(self, mode: TemporalMode, config: Optional[Dict] = None):
@@ -76,7 +76,7 @@ class TestTemporalModeEnum:
 
     def test_temporal_mode_values(self):
         """Test all temporal mode enum values"""
-        assert TemporalMode.PEARL == "pearl"
+        assert TemporalMode.FORWARD == "forward"
         assert TemporalMode.DIRECTORIAL == "directorial"
         assert TemporalMode.BRANCHING == "branching"
         assert TemporalMode.CYCLICAL == "cyclical"
@@ -84,8 +84,8 @@ class TestTemporalModeEnum:
 
     def test_temporal_mode_string_conversion(self):
         """Test string conversion of temporal modes"""
-        assert str(TemporalMode.PEARL) == "TemporalMode.PEARL"
-        assert TemporalMode.PEARL.value == "pearl"
+        assert str(TemporalMode.FORWARD) == "TemporalMode.FORWARD"
+        assert TemporalMode.FORWARD.value == "forward"
 
 
 @pytest.mark.integration
@@ -103,13 +103,13 @@ class TestTemporalAgent:
         assert "maintain_causality" in agent.goals
         assert len(agent.personality) == 5  # 5D personality vector
 
-    def test_influence_event_probability_pearl_mode(self):
-        """Test event probability influence in Pearl mode"""
-        agent = TemporalAgent(TemporalMode.PEARL, {})
+    def test_influence_event_probability_forward_mode(self):
+        """Test event probability influence in Forward mode"""
+        agent = TemporalAgent(TemporalMode.FORWARD, {})
         context = {"base_probability": 0.5}
 
         prob = agent.influence_event_probability("any_event", context)
-        assert prob == 0.5  # No modification in Pearl mode
+        assert prob == 0.5  # No modification in Forward mode
 
     def test_influence_event_probability_directorial_mode(self):
         """Test event probability influence in Directorial mode"""
@@ -194,8 +194,8 @@ class TestTemporalAgent:
 class TestTemporalModeValidation:
     """Test temporal consistency validation by mode"""
 
-    def test_validate_temporal_consistency_pearl_mode(self):
-        """Test temporal consistency in Pearl mode"""
+    def test_validate_temporal_consistency_forward_mode(self):
+        """Test temporal consistency in Forward mode"""
         from schemas import Entity, Timepoint
 
         entity = Entity(entity_id="test_entity", entity_type="human")
@@ -207,10 +207,10 @@ class TestTemporalModeValidation:
         )
 
         result = Validator._validators["temporal_consistency"]["func"](
-            entity, "normal knowledge", timepoint, "pearl"
+            entity, "normal knowledge", timepoint, "forward"
         )
         assert result["valid"] == True
-        assert "Pearl mode: Forward causality" in result["message"]
+        assert "Forward mode: Forward causality" in result["message"]
 
     def test_validate_temporal_consistency_cyclical_mode(self):
         """Test temporal consistency in Cyclical mode"""
@@ -317,10 +317,10 @@ class TestTimelineModalSupport:
             resolution="day",
             entities_present=["entity1"],
             events=["event1"]
-            # temporal_mode not specified, should default to PEARL
+            # temporal_mode not specified, should default to FORWARD
         )
 
-        assert timeline.temporal_mode == TemporalMode.PEARL
+        assert timeline.temporal_mode == TemporalMode.FORWARD
 
 
 @pytest.mark.integration

@@ -85,7 +85,7 @@ class TestPortalConfiguration:
     def test_wrong_mode_raises_error(self):
         """Test that non-PORTAL mode raises ValueError"""
         config = TemporalConfig(
-            mode=TemporalMode.PEARL,  # Wrong mode
+            mode=TemporalMode.FORWARD,  # Wrong mode
             portal_description="Some endpoint",
             portal_year=2040,
             origin_year=2025
@@ -295,7 +295,7 @@ class TestTemporalAgentPortalIntegration:
         store = Mock()
 
         agent = TemporalAgent(
-            mode=TemporalMode.PEARL,  # Wrong mode
+            mode=TemporalMode.FORWARD,  # Wrong mode
             llm_client=llm_client,
             store=store
         )

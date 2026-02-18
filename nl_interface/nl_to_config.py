@@ -284,7 +284,7 @@ class NLConfigGenerator:
                 for i in range(entity_count)
             ],
             "timepoint_count": timepoint_count,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": focus,
             "outputs": ["dialog", "decisions"]
         }

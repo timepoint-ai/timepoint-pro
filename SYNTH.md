@@ -165,7 +165,7 @@ The synthesizer analogy isn't just aesthetic—it captures something structural 
 
 4. **Templates as patches**: A patch on a Moog is a saved configuration of knobs and cables. Our JSON templates are exactly this—reproducible configurations that capture a specific "sound" (scenario shape).
 
-5. **Temporal modes as synthesis algorithms**: FM, subtractive, additive, granular—each synthesis method produces characteristically different sounds from the same oscillator. Similarly, PEARL, DIRECTORIAL, CYCLICAL produce characteristically different narratives from the same entities.
+5. **Temporal modes as synthesis algorithms**: FM, subtractive, additive, granular—each synthesis method produces characteristically different sounds from the same oscillator. Similarly, FORWARD, DIRECTORIAL, CYCLICAL produce characteristically different narratives from the same entities.
 
 The metaphor helps users who already understand sound synthesis apply that intuition to temporal simulation. It also provides a vocabulary for discussing otherwise-abstract concepts: "What's the attack on Jefferson's presence?" is more graspable than "What's the entity introduction latency coefficient?"
 
@@ -492,7 +492,7 @@ Update `generation/templates/catalog.json`:
 ```json
 {
   "patches": {
-    "corporate": ["board_meeting", "vc_pitch_pearl", "vc_pitch_roadshow"],
+    "corporate": ["board_meeting", "vc_pitch_forward", "vc_pitch_roadshow"],
     "historical": ["jefferson_dinner"],
     "crisis": ["hospital_crisis"],
     "mystical": ["kami_shrine"]

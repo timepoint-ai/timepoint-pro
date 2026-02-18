@@ -5,7 +5,7 @@
 Temporal agent for modal causality and time-as-entity modeling.
 
 Contains:
-- TemporalAgent: Time as entity with goals in non-Pearl modes (@M7, @M17)
+- TemporalAgent: Time as entity with goals in non-Forward modes (@M7, @M17)
   - determine_fidelity_temporal_strategy: Optimal fidelity + temporal strategy (@M1+M17)
   - influence_event_probability: Adjust event probability by mode
   - generate_next_timepoint: Generate forward temporal progression (@M7)
@@ -36,7 +36,7 @@ RESOLUTION_TOKEN_BUDGET = {
 
 
 class TemporalAgent:
-    """Time as entity with goals in non-Pearl modes"""
+    """Time as entity with goals in non-Forward modes"""
 
     def __init__(self, mode: Optional[TemporalMode] = None, config: Optional[Dict] = None,
                  store=None, llm_client=None, temporal_config=None):
@@ -45,11 +45,11 @@ class TemporalAgent:
             # New signature with store and llm_client
             self.store = store
             self.llm_client = llm_client
-            self.mode = mode or TemporalMode.PEARL
+            self.mode = mode or TemporalMode.FORWARD
             self.goals = []
         else:
             # Old signature with mode and config
-            self.mode = mode or TemporalMode.PEARL
+            self.mode = mode or TemporalMode.FORWARD
             self.goals = (config or {}).get("goals", [])
             self.store = None
             self.llm_client = None
@@ -129,7 +129,7 @@ class TemporalAgent:
         elif self.mode == TemporalMode.BRANCHING:
             return self._strategy_for_branching_mode(config, context)
         else:
-            # Default PEARL mode or others
+            # Default FORWARD mode or others
             return self._strategy_for_default_mode(config, context)
 
     def _strategy_for_portal_mode(self, config, context) -> "FidelityTemporalStrategy":
@@ -510,7 +510,7 @@ class TemporalAgent:
         )
 
     def _strategy_for_default_mode(self, config, context) -> "FidelityTemporalStrategy":
-        """Default strategy for PEARL and other modes"""
+        """Default strategy for FORWARD and other modes"""
         from schemas import FidelityTemporalStrategy, FidelityPlanningMode, TokenBudgetMode, ResolutionLevel
 
         return FidelityTemporalStrategy(
@@ -655,7 +655,7 @@ class TemporalAgent:
             # Default: slight reduction for events that don't advance toward portal
             return base_prob * 0.9
 
-        return base_prob  # PEARL mode or default
+        return base_prob  # FORWARD mode or default
 
     def _advances_narrative_arc(self, event: str, narrative_arc: str) -> bool:
         """Check if event advances the current narrative arc"""

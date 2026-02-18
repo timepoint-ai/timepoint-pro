@@ -5,10 +5,10 @@ ABOUT TIMEPOINT-DAEDALUS:
 - Employs 17 causal mechanisms (M1-M17) to model different types of causality
 - Supports multiple temporal modes:
   * Forward: Standard chronological progression
-  * Pearl: Counterfactual "do() operator" interventions
   * Portal: Backward temporal reasoning from known endpoint to origin
   * Branching: Multiple timeline variations
-  * Loops: Cyclical temporal patterns
+  * Directorial: Narrative-driven dramatic structure
+  * Cyclical: Cyclical temporal patterns
 - Produces training data for language models to learn causal reasoning
 - Tracks entity states (energy, knowledge, emotional valence/arousal)
 - Exports narratives in JSON, markdown, Fountain screenplay format, and PDF

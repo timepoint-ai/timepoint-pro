@@ -25,7 +25,7 @@ class TestConfigValidator:
                 {"name": "Bob", "role": "CFO"}
             ],
             "timepoint_count": 5,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog", "decision_making"],
             "outputs": ["dialog", "decisions"]
         }
@@ -43,7 +43,7 @@ class TestConfigValidator:
             "scenario": "Test",
             "entities": [{"name": "Alice", "role": "CEO"}],
             # Missing timepoint_count
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"]
         }
@@ -76,7 +76,7 @@ class TestConfigValidator:
             "scenario": "Test",
             "entities": [{"name": f"Person{i}", "role": "Role"} for i in range(101)],
             "timepoint_count": 5,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"]
         }
@@ -94,7 +94,7 @@ class TestConfigValidator:
             "scenario": "Test",
             "entities": [{"name": "Alice", "role": "CEO"}],
             "timepoint_count": 101,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"]
         }
@@ -112,7 +112,7 @@ class TestConfigValidator:
             "scenario": "Test",
             "entities": [{"name": "Alice", "role": "CEO"}],
             "timepoint_count": 5,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["invalid_focus"],
             "outputs": ["dialog"]
         }
@@ -128,7 +128,7 @@ class TestConfigValidator:
             "scenario": "Test",
             "entities": [{"name": "Alice", "role": "CEO"}],
             "timepoint_count": 5,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["invalid_output"]
         }
@@ -144,7 +144,7 @@ class TestConfigValidator:
             "scenario": "Test",
             "entities": [{"name": f"Person{i}", "role": "Role"} for i in range(60)],
             "timepoint_count": 5,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"]
         }
@@ -162,7 +162,7 @@ class TestConfigValidator:
             "scenario": "Test",
             "entities": [{"name": "Alice", "role": "CEO"}],
             "timepoint_count": 60,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"]
         }
@@ -179,7 +179,7 @@ class TestConfigValidator:
             "scenario": "Test",
             "entities": [{"name": "Alice", "role": "CEO"}],
             "timepoint_count": 5,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["decision_making"],  # No dialog focus
             "outputs": ["dialog"]  # But requesting dialog output
         }
@@ -197,7 +197,7 @@ class TestConfigValidator:
             "entities": [{"name": "George Washington", "role": "President"}],
             "timepoint_count": 5,
             "start_time": "1789-04-30T10:00:00",
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"]
         }
@@ -214,7 +214,7 @@ class TestConfigValidator:
             "entities": [{"name": "Alice", "role": "CEO"}],
             "timepoint_count": 5,
             "start_time": "not-a-date",
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"]
         }
@@ -230,7 +230,7 @@ class TestConfigValidator:
             "scenario": "Variations",
             "entities": [{"name": "Alice", "role": "CEO"}],
             "timepoint_count": 3,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"],
             "generation_mode": "horizontal",
@@ -248,7 +248,7 @@ class TestConfigValidator:
             "scenario": "Variations",
             "entities": [{"name": "Alice", "role": "CEO"}],
             "timepoint_count": 3,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"],
             "generation_mode": "horizontal",
@@ -323,7 +323,7 @@ class TestNLConfigGenerator:
             "scenario": "Test",
             "entities": [{"name": "Alice", "role": "CEO"}],
             "timepoint_count": 5,
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"]
         }
@@ -377,7 +377,7 @@ class TestSimulationConfigSchema:
             scenario="Test Scenario",
             entities=[{"name": "Alice", "role": "CEO"}],
             timepoint_count=5,
-            temporal_mode="pearl",
+            temporal_mode="forward",
             focus=["dialog"],
             outputs=["dialog"]
         )
@@ -393,7 +393,7 @@ class TestSimulationConfigSchema:
                 scenario="Test",
                 entities=[],  # No entities
                 timepoint_count=5,
-                temporal_mode="pearl",
+                temporal_mode="forward",
                 focus=["dialog"],
                 outputs=["dialog"]
             )
@@ -405,7 +405,7 @@ class TestSimulationConfigSchema:
                 scenario="Test",
                 entities=[{"name": "Alice", "role": "CEO"}],
                 timepoint_count=0,  # Too low
-                temporal_mode="pearl",
+                temporal_mode="forward",
                 focus=["dialog"],
                 outputs=["dialog"]
             )
@@ -415,7 +415,7 @@ class TestSimulationConfigSchema:
                 scenario="Test",
                 entities=[{"name": "Alice", "role": "CEO"}],
                 timepoint_count=101,  # Too high
-                temporal_mode="pearl",
+                temporal_mode="forward",
                 focus=["dialog"],
                 outputs=["dialog"]
             )
@@ -438,7 +438,7 @@ class TestSimulationConfigSchema:
             scenario="Test",
             entities=[{"name": "Alice", "role": "CEO"}],
             timepoint_count=5,
-            temporal_mode="pearl",
+            temporal_mode="forward",
             focus=["dialog"],
             outputs=["dialog"],
             start_time="2025-01-01T10:00:00",
@@ -457,7 +457,7 @@ class TestSimulationConfigSchema:
                 scenario="Test",
                 entities=[{"name": "Alice", "role": "CEO"}],
                 timepoint_count=5,
-                temporal_mode="pearl",
+                temporal_mode="forward",
                 focus=["dialog"],
                 outputs=["dialog"],
                 animism_level=4  # Too high

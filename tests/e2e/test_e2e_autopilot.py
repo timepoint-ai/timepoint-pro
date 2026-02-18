@@ -226,17 +226,17 @@ class TestE2ETemporalWorkflows:
         graph_store.save_timepoint(base_tp)
 
         # Test different modal branches using actual TemporalMode values
-        pearl_branch = system.create_modal_branch(base_tp, TemporalMode.PEARL)
+        forward_branch = system.create_modal_branch(base_tp, TemporalMode.FORWARD)
         branching_branch = system.create_modal_branch(base_tp, TemporalMode.BRANCHING)
         cyclical_branch = system.create_modal_branch(base_tp, TemporalMode.CYCLICAL)
 
         # Verify branches were created (they're Timepoint objects, not Timeline objects)
-        assert pearl_branch.timepoint_id.endswith(f"_modal_{TemporalMode.PEARL.value}")
+        assert forward_branch.timepoint_id.endswith(f"_modal_{TemporalMode.FORWARD.value}")
         assert branching_branch.timepoint_id.endswith(f"_modal_{TemporalMode.BRANCHING.value}")
         assert cyclical_branch.timepoint_id.endswith(f"_modal_{TemporalMode.CYCLICAL.value}")
 
         # Validate modal relationships
-        all_branches = [pearl_branch, branching_branch, cyclical_branch]
+        all_branches = [forward_branch, branching_branch, cyclical_branch]
         for branch in all_branches:
             assert branch.timestamp == base_tp.timestamp  # Same moment in time
             assert base_tp.timepoint_id in branch.timepoint_id  # Contains base ID
@@ -619,7 +619,7 @@ class TestE2EOrchestratorIntegration:
             "simulate a brief historical meeting with 4 people",
             real_llm_client,
             graph_store,
-            context={"max_entities": 4, "max_timepoints": 2, "temporal_mode": "pearl"},
+            context={"max_entities": 4, "max_timepoints": 2, "temporal_mode": "forward"},
             save_to_db=True
         )
 
@@ -695,7 +695,7 @@ class TestE2EOrchestratorIntegration:
             "simulate a three-day historical event",
             real_llm_client,
             graph_store,
-            context={"max_entities": 3, "max_timepoints": 3, "temporal_mode": "pearl"},
+            context={"max_entities": 3, "max_timepoints": 3, "temporal_mode": "forward"},
             save_to_db=True
         )
 
@@ -726,7 +726,7 @@ class TestE2EOrchestratorIntegration:
         # Assertions
         assert len(initial_timepoints) >= 2
         assert next_tp.causal_parent == last_tp.timepoint_id
-        assert result["temporal_agent"].mode == TemporalMode.PEARL
+        assert result["temporal_agent"].mode == TemporalMode.FORWARD
 
         print("\n" + "="*70)
         print("✅ ORCHESTRATOR → TEMPORAL CHAIN SUCCESS")
@@ -764,7 +764,7 @@ class TestE2EOrchestratorIntegration:
             "simulate the signing of the declaration of independence",
             real_llm_client,
             graph_store,
-            context={"max_entities": 5, "max_timepoints": 3, "temporal_mode": "pearl"},
+            context={"max_entities": 5, "max_timepoints": 3, "temporal_mode": "forward"},
             save_to_db=True
         )
 

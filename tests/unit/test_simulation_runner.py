@@ -55,7 +55,7 @@ class TestSimulationJob:
 
         assert job.entity_count == 4
         assert job.timepoint_count == 5
-        assert job.temporal_mode == "pearl"
+        assert job.temporal_mode == "forward"
         assert job.generate_summaries is True
         assert job.export_formats == ["json", "markdown"]
 

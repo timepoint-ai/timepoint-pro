@@ -145,7 +145,7 @@ class CoverageMatrix:
         """
         Show which causal modes are covered.
         """
-        all_modes = [TemporalMode.PEARL, TemporalMode.DIRECTORIAL,
+        all_modes = [TemporalMode.FORWARD, TemporalMode.DIRECTORIAL,
                      TemporalMode.BRANCHING, TemporalMode.CYCLICAL, TemporalMode.PORTAL]
 
         mode_coverage = {}
@@ -228,7 +228,7 @@ class CoverageMatrix:
             else:
                 modes_used.add(r.causal_mode)
         report.append(f"Causal Modes Covered: {len(modes_used)}/5")
-        all_modes = {TemporalMode.PEARL, TemporalMode.DIRECTORIAL,
+        all_modes = {TemporalMode.FORWARD, TemporalMode.DIRECTORIAL,
                      TemporalMode.BRANCHING, TemporalMode.CYCLICAL, TemporalMode.PORTAL}
         if len(modes_used) < 5:
             # Convert modes_used to enum values for comparison

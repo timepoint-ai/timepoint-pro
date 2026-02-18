@@ -42,13 +42,13 @@
     "M14": "Circadian Patterns - Time-of-day affects behavior",
     "M15": "Entity Prospection - Entity models future states",
     "M16": "Animistic Entities - Non-human entities have agency",
-    "M17": "Modal Causality - PEARL/PORTAL/BRANCHING modes",
+    "M17": "Modal Causality - FORWARD/PORTAL/BRANCHING modes",
     "M18": "Model Selection - Action-appropriate model chosen"
   },
   "patches": {
     "corporate": [
       "showcase/board_meeting",
-      "showcase/vc_pitch_pearl",
+      "showcase/vc_pitch_forward",
       "showcase/vc_pitch_branching",
       "showcase/vc_pitch_roadshow",
       "showcase/vc_pitch_strategies"
@@ -149,9 +149,9 @@
       "duration_estimate": "2min",
       "status": "verified"
     },
-    "showcase/vc_pitch_pearl": {
-      "name": "VC Pitch (Pearl)",
-      "description": "Pre-seed pitch with pearl causality",
+    "showcase/vc_pitch_forward": {
+      "name": "VC Pitch (Forward)",
+      "description": "Pre-seed pitch with forward causality",
       "mechanisms": ["M11", "M15", "M7", "M13"],
       "tier": "standard",
       "category": "showcase",
@@ -280,8 +280,8 @@
       "status": "verified"
     },
     "persona/agent3_litigation_discovery": {
-      "name": "Litigation Discovery Pearl (AGENT3)",
-      "description": "PEARL mode litigation with enforced information asymmetry through discovery timeline",
+      "name": "Litigation Discovery Forward (AGENT3)",
+      "description": "FORWARD mode litigation with enforced information asymmetry through discovery timeline",
       "mechanisms": ["M3", "M7", "M11", "M13", "M19"],
       "tier": "standard",
       "category": "persona",

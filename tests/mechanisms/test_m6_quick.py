@@ -36,7 +36,7 @@ def test_m6_tensor_compression():
     manager.start_run(
         run_id=run_id,
         template_id="m6_quick_test",
-        causal_mode=TemporalMode.PEARL,
+        causal_mode=TemporalMode.FORWARD,
         max_entities=2,
         max_timepoints=1
     )

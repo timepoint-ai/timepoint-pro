@@ -368,7 +368,7 @@ Respond with:
         entity_id = getattr(entity, 'entity_id', 'unknown')
         t1_id = getattr(t1, 'timepoint_id', 'unknown')
         resolution_level = getattr(entity, 'resolution_level', 'SCENE')
-        temporal_mode = config.temporal.mode if hasattr(config, 'temporal') else 'pearl'
+        temporal_mode = config.temporal.mode if hasattr(config, 'temporal') else 'forward'
 
         # Get exposure events for this entity up to T1
         entity_exposures = exposure_events.get(entity_id, [])

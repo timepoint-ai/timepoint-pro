@@ -318,7 +318,7 @@ class ExportPipeline:
 
         # Get optional parameters
         title = kwargs.get("title")
-        temporal_mode = kwargs.get("temporal_mode", "pearl")
+        temporal_mode = kwargs.get("temporal_mode", "forward")
 
         script_data = generator.generate_script_structure(
             world_id=world_id,

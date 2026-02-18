@@ -33,7 +33,7 @@ def test_script_generator_basic():
     # Verify structure
     assert script_data.title == "Test Script"
     assert script_data.world_id == "test_world"
-    assert script_data.temporal_mode == "pearl"
+    assert script_data.temporal_mode == "forward"
     assert len(script_data.scenes) == 0  # No data in database
     assert len(script_data.characters) == 0
 
@@ -120,7 +120,7 @@ def test_storyboard_export_empty():
 
         assert data["title"] == "Empty Test Storyboard"
         assert data["world_id"] == "test_world"
-        assert data["temporal_mode"] == "pearl"
+        assert data["temporal_mode"] == "forward"
         assert "scenes" in data
         assert "characters" in data
         assert "metadata" in data

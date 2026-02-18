@@ -106,7 +106,7 @@ class TestCompleteE2EPipeline:
             context={
                 "max_entities": len(config['entities']),
                 "max_timepoints": min(config['timepoint_count'], 3),
-                "temporal_mode": config.get('temporal_mode', 'pearl')
+                "temporal_mode": config.get('temporal_mode', 'forward')
             },
             save_to_db=True
         )

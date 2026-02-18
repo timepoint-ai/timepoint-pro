@@ -256,7 +256,7 @@ class TestDeepTemporalWorkflows:
     def test_modal_temporal_causality_with_llm(self, llm_client):
         """Test modal temporal causality with real LLM context"""
         # Test different temporal modes
-        modes = [TemporalMode.PEARL, TemporalMode.DIRECTORIAL, TemporalMode.CYCLICAL]
+        modes = [TemporalMode.FORWARD, TemporalMode.DIRECTORIAL, TemporalMode.CYCLICAL]
 
         for mode in modes:
             agent = TemporalAgent(mode, {"goals": ["maintain_coherence"]})
@@ -269,7 +269,7 @@ class TestDeepTemporalWorkflows:
             )
 
             # Probability should be modified based on mode
-            if mode == TemporalMode.PEARL:
+            if mode == TemporalMode.FORWARD:
                 assert influenced_prob == base_prob  # No modification
             else:
                 assert influenced_prob != base_prob  # Some modification

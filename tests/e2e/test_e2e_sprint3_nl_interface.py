@@ -98,7 +98,7 @@ class TestE2ENLToConfig:
             "scenario": "Test",
             "entities": [{"name": "Alice", "role": "CEO"}],
             "timepoint_count": 101,  # Exceeds maximum
-            "temporal_mode": "pearl",
+            "temporal_mode": "forward",
             "focus": ["dialog"],
             "outputs": ["dialog"]
         }
@@ -503,7 +503,7 @@ class TestE2EIntegrationWithExistingSystem:
         config, _ = generator.generate_config(description)
 
         # Verify temporal mode is valid
-        valid_modes = ["pearl", "directorial", "branching", "cyclical", "portal"]
+        valid_modes = ["forward", "directorial", "branching", "cyclical", "portal"]
         assert config["temporal_mode"] in valid_modes
 
     def test_nl_config_focus_areas_valid(self):
