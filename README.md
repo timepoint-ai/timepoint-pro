@@ -151,22 +151,22 @@ This is intentional: the public repo must remain forkable and self-contained. An
 
 **Recent:** TDF export format via `ExportFormatFactory`. Data export API (`/api/data-export/{run_id}`).
 
-**Planned: `/api/data-export`** --- A future endpoint for bulk export of simulation artifacts (causal graphs, entity tensors, dialog corpora, convergence sets) in standardized formats. Primary consumers: SNAG-Bench Axis 2 (causal reasoning benchmarks) and Proteus (simulation-to-training pipeline). This endpoint will live in the dashboard API (`dashboards/api/server.py`) and serve read-only data from the existing runs database. No auth required for local use; the Pro-Cloud private wrapper will gate access through its own auth layer.
+**Planned: `/api/data-export`** --- A future endpoint for bulk export of simulation artifacts (causal graphs, entity tensors, dialog corpora, convergence sets) in standardized formats. Primary consumers: SNAG-Bench Axis 2 (causal reasoning benchmarks) and Proteus (simulation-to-training pipeline). This endpoint will live in the dashboard API (`dashboards/api/server.py`) and serve read-only data from the existing runs database.
 
-**Pro-Cloud boundary** --- `/api/usage` and `/api/budget` are not implemented here. These endpoints live in the Pro-Cloud private wrapper, which tracks usage locally (per-run `UsageRecord` table) and optionally forwards to the shared Billing service when `BILLING_SERVICE_URL` is configured. This repo exposes simulation data only.
+## Cloud Execution
 
-## Cloud Execution via Pro-Cloud
-
-For long-running simulations and persistent storage, a private hosted layer wraps this engine with production concerns:
+For long-running simulations and persistent storage, a hosted cloud layer wraps this engine with production concerns:
 
 - **Persistent storage** --- Postgres replaces SQLite; results survive deploys
 - **Job queue** --- Celery + Redis for cancellable, deploy-surviving jobs
-- **Auth** --- JWT + API key with Postgres persistence (this repo's in-memory key scaffold is for local dev only)
-- **Budget enforcement** --- Pre-submission budget checks, per-run cost tracking, optional forwarding to shared Billing service
-- **Usage tracking** --- `UsageRecord` table records every run start/complete with cost and token counts
-- **Railway deployment** --- Internal networking to Billing, Auth, and Web services
+- **Auth** --- JWT + API key with Postgres persistence; Flash token introspection for SSO across the Timepoint Suite
+- **Budget enforcement** --- Pre-submission budget checks, per-run cost tracking
+- **Usage tracking** --- Per-run cost and token accounting
+- **OpenAPI docs** --- Interactive API documentation at `/docs` (auth-gated)
 
-The cloud layer includes this repo as a git submodule and adds no runtime dependencies back into it. See the engine's API for simulation data; the cloud layer gates access and adds `/api/usage` + `/api/budget` endpoints.
+The cloud layer includes this repo as a git submodule and adds no runtime dependencies back into it. The engine's local API serves simulation data; the cloud layer gates access and adds `/api/usage` + `/api/budget` endpoints.
+
+The hosted Pro service is available at `pro.timepointai.com`. All Timepoint services use a subdomain architecture under `timepointai.com` --- see the [Timepoint Suite](#timepoint-suite) table below.
 
 ## Sample Training Data
 
@@ -182,18 +182,17 @@ A small sample JSONL file is included at [`examples/sample_training_data.jsonl`]
 
 Open-source engines for temporal AI. Render the past. Simulate the future. Score the predictions. Accumulate the graph.
 
-| Service | Type | Repo | Role |
-|---------|------|------|------|
-| **Flash** | Open Source | timepoint-flash | Reality Writer — renders grounded historical moments (Synthetic Time Travel) |
-| **Pro** | **Open Source** | **timepoint-pro** | **Rendering Engine — SNAG-powered simulation, TDF output, training data** |
-| **Clockchain** | Open Source | timepoint-clockchain | Temporal Causal Graph — Rendered Past + Rendered Future, growing 24/7 |
-| **SNAG Bench** | Open Source | timepoint-snag-bench | Quality Certifier — measures Causal Resolution across renderings |
-| **Proteus** | Open Source | proteus | Settlement Layer — prediction markets that validate Rendered Futures |
-| **TDF** | Open Source | timepoint-tdf | Data Format — JSON-LD interchange across all services |
-| **Web App** | Private | timepoint-web-app | Browser client at app.timepointai.com |
-| **iPhone App** | Private | timepoint-iphone-app | iOS client — Synthetic Time Travel on mobile |
-| **Billing** | Private | timepoint-billing | Payment processing — Apple IAP + Stripe |
-| **Landing** | Private | timepoint-landing | Marketing site at timepointai.com |
+| Service | URL | Repo | Role |
+|---------|-----|------|------|
+| **Flash** | [flash.timepointai.com](https://flash.timepointai.com) | [timepoint-flash](https://github.com/timepointai/timepoint-flash) | Reality Writer — renders grounded historical moments (Synthetic Time Travel) |
+| **Pro** | [pro.timepointai.com](https://pro.timepointai.com) | [**timepoint-pro**](https://github.com/timepointai/timepoint-pro) | **Rendering Engine — SNAG-powered simulation, TDF output, training data** |
+| **Clockchain** | [clockchain.timepointai.com](https://clockchain.timepointai.com) | [timepoint-clockchain](https://github.com/timepointai/timepoint-clockchain) | Temporal Causal Graph — Rendered Past + Rendered Future, growing 24/7 |
+| **SNAG Bench** | — | [timepoint-snag-bench](https://github.com/timepointai/timepoint-snag-bench) | Quality Certifier — measures Causal Resolution across renderings |
+| **Proteus** | [proteus.timepointai.com](https://proteus.timepointai.com) | [proteus](https://github.com/timepointai/proteus) | Settlement Layer — prediction markets that validate Rendered Futures |
+| **TDF** | — | [timepoint-tdf](https://github.com/timepointai/timepoint-tdf) | Data Format — JSON-LD interchange across all services |
+| **API Gateway** | [api.timepointai.com](https://api.timepointai.com) | — | Unified API gateway routing to all backend services |
+| **Web App** | [app.timepointai.com](https://app.timepointai.com) | — | Browser client for Synthetic Time Travel |
+| **Landing** | [timepointai.com](https://timepointai.com) | — | Marketing site |
 
 **The Timepoint Thesis** — a forthcoming paper formalizing the Rendered Past / Rendered Future framework, the mathematics of Causal Resolution, the TDF specification, and the Proof of Causal Convergence protocol. Follow [@seanmcdonaldxyz](https://x.com/seanmcdonaldxyz) for updates.
 
