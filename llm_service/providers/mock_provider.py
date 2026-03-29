@@ -18,7 +18,6 @@ from pydantic import BaseModel
 from llm_service.provider import LLMResponse
 from llm_service.response_parser import ResponseParser
 
-
 logger = logging.getLogger(__name__)
 
 

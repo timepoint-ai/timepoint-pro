@@ -977,7 +977,7 @@ class KnowledgeSeeder:
         for entity_item in spec.entities:
             events = []
 
-            for idx, knowledge_item in enumerate(entity_item.initial_knowledge):
+            for _idx, knowledge_item in enumerate(entity_item.initial_knowledge):
                 # Create exposure event for each initial knowledge item
                 event = ExposureEvent(
                     entity_id=entity_item.entity_id,
@@ -1654,7 +1654,7 @@ class OrchestratorAgent:
         query_interface = QueryInterface(self.store, self.llm)
 
         # Get existing entity IDs from spec
-        existing_entities = set(e.entity_id for e in spec.entities)
+        existing_entities = {e.entity_id for e in spec.entities}
 
         # Collect all text to search for entity mentions
         texts_to_search = [spec.scene_description, spec.global_context]

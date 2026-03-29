@@ -140,9 +140,9 @@ class TestConvergenceE2EPipeline:
         print(f"  Divergence Points: {len(result.divergence_points)}")
 
         # Should be around 33% (1 shared / 3 total edges)
-        assert 0.2 < result.convergence_score < 0.5, (
-            f"Expected moderate convergence, got {result.convergence_score}"
-        )
+        assert (
+            0.2 < result.convergence_score < 0.5
+        ), f"Expected moderate convergence, got {result.convergence_score}"
         assert result.robustness_grade in ["D", "F"], "Low convergence should get grade D or F"
         assert len(result.divergence_points) > 0, "Should have divergence points"
 
@@ -182,9 +182,9 @@ class TestConvergenceE2EPipeline:
             )
 
             actual_grade = result.robustness_grade
-            assert actual_grade == expected_grade, (
-                f"Score {score} should get grade {expected_grade}, got {actual_grade}"
-            )
+            assert (
+                actual_grade == expected_grade
+            ), f"Score {score} should get grade {expected_grade}, got {actual_grade}"
             print(f"  Score {score:.0%} → Grade {actual_grade} ✓")
 
         print("\n✅ PASSED: All grading thresholds work correctly")

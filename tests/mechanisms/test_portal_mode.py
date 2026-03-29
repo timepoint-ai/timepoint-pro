@@ -62,7 +62,7 @@ class TestPortalConfiguration:
         store = Mock()
 
         with pytest.raises(ValueError, match="portal_description is required"):
-            strategy = PortalStrategy(config, llm_client, store)
+            PortalStrategy(config, llm_client, store)
 
     def test_missing_years_raises_error(self):
         """Test that missing portal_year or origin_year raises ValueError"""
@@ -79,7 +79,7 @@ class TestPortalConfiguration:
         store = Mock()
 
         with pytest.raises(ValueError, match="portal_year and origin_year are required"):
-            strategy = PortalStrategy(config, llm_client, store)
+            PortalStrategy(config, llm_client, store)
 
     def test_wrong_mode_raises_error(self):
         """Test that non-PORTAL mode raises ValueError"""
@@ -96,7 +96,7 @@ class TestPortalConfiguration:
         store = Mock()
 
         with pytest.raises(ValueError, match="PortalStrategy requires mode=PORTAL"):
-            strategy = PortalStrategy(config, llm_client, store)
+            PortalStrategy(config, llm_client, store)
 
 
 class TestPortalState:

@@ -316,7 +316,7 @@ class TestVerticalGenerator:
         assert "progressive_training" in comparison
         assert "causal_chain" in comparison
 
-        for strategy, metrics in comparison.items():
+        for _strategy, metrics in comparison.items():
             assert "total_timepoints" in metrics
             assert metrics["total_timepoints"] == base_config.timepoints.count + 5 + 3
 

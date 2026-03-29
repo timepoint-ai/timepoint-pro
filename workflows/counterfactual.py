@@ -55,14 +55,12 @@ def create_counterfactual_branch(
                 "timeline_id": parent_timeline_id,
                 "event_summary": ", ".join([tp.event_description for tp in parent_timepoints[:5]]),
                 "key_entities": list(
-                    set(
-                        [
-                            e
-                            for tp in parent_timepoints
-                            if hasattr(tp, "entities_present")
-                            for e in tp.entities_present
-                        ]
-                    )
+                    {
+                        e
+                        for tp in parent_timepoints
+                        if hasattr(tp, "entities_present")
+                        for e in tp.entities_present
+                    }
                 )[:10],
             }
 
@@ -73,9 +71,9 @@ def create_counterfactual_branch(
                 "description": intervention.description
                 or f"{intervention.type} on {intervention.target}",
                 "intervention_point": intervention_point,
-                "parameters": intervention.parameters
-                if hasattr(intervention, "parameters")
-                else {},
+                "parameters": (
+                    intervention.parameters if hasattr(intervention, "parameters") else {}
+                ),
             }
 
             # Get affected entities
@@ -123,15 +121,21 @@ def create_counterfactual_branch(
         # Copy other timeline metadata from parent
         timepoint_id=f"{branch_timeline_id}_root",
         timestamp=intervention_timepoint.timestamp,
-        resolution=intervention_timepoint.resolution
-        if hasattr(intervention_timepoint, "resolution")
-        else "day",
-        entities_present=intervention_timepoint.entities_present.copy()
-        if hasattr(intervention_timepoint, "entities_present")
-        else [],
-        events=intervention_timepoint.events.copy()
-        if hasattr(intervention_timepoint, "events")
-        else [],
+        resolution=(
+            intervention_timepoint.resolution
+            if hasattr(intervention_timepoint, "resolution")
+            else "day"
+        ),
+        entities_present=(
+            intervention_timepoint.entities_present.copy()
+            if hasattr(intervention_timepoint, "entities_present")
+            else []
+        ),
+        events=(
+            intervention_timepoint.events.copy()
+            if hasattr(intervention_timepoint, "events")
+            else []
+        ),
     )
     store.save_timeline(branch_timeline)
 

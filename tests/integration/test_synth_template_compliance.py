@@ -96,9 +96,9 @@ class TestPatchMetadataCompliance:
 
         if mismatches:
             msg = "Patch category mismatches:\n"
-            for tid, cat, templates in mismatches:
+            for tid, cat, _templates in mismatches:
                 msg += f"  {tid} claims category '{cat}' but not in catalog\n"
-            assert False, msg
+            raise AssertionError(msg)
 
     def test_unique_patch_names(self, loader, all_templates):
         """Patch names should be unique across templates."""
@@ -244,10 +244,10 @@ class TestCatalogPatchConsistency:
     def test_catalog_patches_count(self, loader):
         """Catalog should have patches covering all templates."""
         catalog = loader.get_catalog()
-        all_templates = set(t.id for t in loader.list_templates())
+        all_templates = {t.id for t in loader.list_templates()}
 
         cataloged_patches = set()
-        for category, template_ids in catalog.patches.items():
+        for _category, template_ids in catalog.patches.items():
             cataloged_patches.update(template_ids)
 
         # All templates should be in at least one category
@@ -302,9 +302,9 @@ class TestCoreMechanismPatches:
 
         # Verified templates cover 12 of 18 mechanisms
         # M2, M4, M5, M6, M9, M18 are not covered by any verified template
-        assert len(covered) >= 12, (
-            f"Expected at least 12 mechanisms covered, got {len(covered)}: {covered}"
-        )
+        assert (
+            len(covered) >= 12
+        ), f"Expected at least 12 mechanisms covered, got {len(covered)}: {covered}"
 
 
 class TestPortalPatches:

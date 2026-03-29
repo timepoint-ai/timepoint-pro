@@ -71,9 +71,9 @@ class TestHarmonicWaveform:
             for c1 in [0.01, 0.5, 1.0]:
                 for baseline in [0.0, 0.5, 1.0]:
                     result = harmonic_adprs_waveform(tau, P1, c1, 0.7, 0.3, 0.5, 0.2, 0.5, baseline)
-                    assert np.all(result >= 0.0) and np.all(result <= 1.0), (
-                        f"Out of range for P1={P1}, c1={c1}, baseline={baseline}"
-                    )
+                    assert np.all(result >= 0.0) and np.all(
+                        result <= 1.0
+                    ), f"Out of range for P1={P1}, c1={c1}, baseline={baseline}"
 
     def test_harmonics_add_complexity(self):
         """With c2, c3 > 0, the signal should differ from fundamental-only."""

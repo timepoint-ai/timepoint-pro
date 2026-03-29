@@ -239,9 +239,9 @@ def synthesize_multi_entity_response(
         "query": query,
         "timeline_context": {
             "span": f"{len(timeline)} timepoints" if timeline else "unknown",
-            "current_event": current_tp.get("event_description", "unknown")
-            if current_tp
-            else "unknown",
+            "current_event": (
+                current_tp.get("event_description", "unknown") if current_tp else "unknown"
+            ),
         },
     }
 

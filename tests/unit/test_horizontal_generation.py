@@ -332,7 +332,7 @@ class TestHorizontalGenerator:
         )
 
         # Should produce same variations
-        for v1, v2 in zip(vars1, vars2):
+        for v1, v2 in zip(vars1, vars2, strict=False):
             assert v1.metadata["personality_variations"] == v2.metadata["personality_variations"]
 
     def test_generator_quality_estimation(self):

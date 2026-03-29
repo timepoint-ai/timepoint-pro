@@ -335,9 +335,9 @@ class FullE2EWorkflowRunner:
                 timeline_id=timepoint.timeline_id,
                 timestamp=timepoint.timestamp,
                 event_description=timepoint.event_description,
-                entities_present=list(timepoint.entities_present)
-                if timepoint.entities_present
-                else [],
+                entities_present=(
+                    list(timepoint.entities_present) if timepoint.entities_present else []
+                ),
                 causal_parent=unique_parent_id,
                 resolution_level=timepoint.resolution_level,
                 run_id=run_id,  # Set run_id for convergence filtering
@@ -877,7 +877,7 @@ class FullE2EWorkflowRunner:
                                     else (d.turns or [])
                                 )
                                 all_dialog_turns.append(turns)
-                                speakers = list(set(t.get("speaker", "?") for t in turns))
+                                speakers = list({t.get("speaker", "?") for t in turns})
                                 dialog_summaries.append(
                                     f"{tp.timepoint_id}: {', '.join(speakers[:3])} - {len(turns)} turns"
                                 )
@@ -930,9 +930,7 @@ class FullE2EWorkflowRunner:
 
                 # Step 4.9: Data quality validation
                 # CRITICAL: Catches issues like empty entities_present that were previously silent
-                quality_results = self._run_data_quality_check(
-                    all_timepoints, trained_entities, run_id
-                )
+                self._run_data_quality_check(all_timepoints, trained_entities, run_id)
 
                 # Step 5: Format training data
                 training_data = self._format_training_data(
@@ -1089,9 +1087,9 @@ class FullE2EWorkflowRunner:
                 # Generate NARRATIVE summary using full simulation data
                 summary = generate_run_summary(
                     run_metadata=metadata,
-                    training_data=training_data[:5]
-                    if training_data
-                    else None,  # Sample for context
+                    training_data=(
+                        training_data[:5] if training_data else None
+                    ),  # Sample for context
                     llm_client=llm,
                     all_timepoints=all_timepoints,  # Full narrative arc
                     entities=trained_entities,  # Character development
@@ -1923,9 +1921,11 @@ class FullE2EWorkflowRunner:
         timeline = [
             {
                 "event_description": tp.event_description,
-                "timestamp": tp.timestamp.isoformat()
-                if hasattr(tp.timestamp, "isoformat")
-                else str(tp.timestamp),
+                "timestamp": (
+                    tp.timestamp.isoformat()
+                    if hasattr(tp.timestamp, "isoformat")
+                    else str(tp.timestamp)
+                ),
             }
             for tp in all_timepoints
         ]
@@ -2258,10 +2258,9 @@ class FullE2EWorkflowRunner:
                     # Phase 1: Inject dialog outcome from previous timepoint
                     if last_dialog_outcome:
                         context["prior_dialog_summary"] = last_dialog_outcome.summary
-                        context["entity_states_post_dialog"] = {
-                            eid: delta
-                            for eid, delta in last_dialog_outcome.emotional_deltas.items()
-                        }
+                        context["entity_states_post_dialog"] = dict(
+                            last_dialog_outcome.emotional_deltas.items()
+                        )
 
                     next_timepoint = temporal_agent.generate_next_timepoint(
                         current_timepoint, context=context
@@ -2720,9 +2719,11 @@ RESPOND WITH ONLY THE EVENT DESCRIPTION, nothing else."""
                     "act": state.act.value if hasattr(state.act, "value") else str(state.act),
                     "tension_score": state.tension_score,
                     "pov_entity": state.pov_entity,
-                    "framing": state.framing.value
-                    if hasattr(state.framing, "value")
-                    else str(state.framing),
+                    "framing": (
+                        state.framing.value
+                        if hasattr(state.framing, "value")
+                        else str(state.framing)
+                    ),
                     "dramatic_irony": state.dramatic_irony,
                     "narrative_beat": state.narrative_beat,
                     "dramatic_importance": state.dramatic_importance,
@@ -3281,9 +3282,11 @@ RESPOND WITH ONLY THE EVENT DESCRIPTION, nothing else."""
                     timeline = [
                         {
                             "event_description": tp.event_description,
-                            "timestamp": tp.timestamp.isoformat()
-                            if hasattr(tp.timestamp, "isoformat")
-                            else str(tp.timestamp),
+                            "timestamp": (
+                                tp.timestamp.isoformat()
+                                if hasattr(tp.timestamp, "isoformat")
+                                else str(tp.timestamp)
+                            ),
                         }
                         for tp in timepoints
                     ]
@@ -3607,7 +3610,7 @@ RESPOND WITH ONLY THE EVENT DESCRIPTION, nothing else."""
                 # Create repo if needed
                 if not oxen_client.repo_exists():
                     print(f"  Creating repository: {repo_name}...")
-                    repo_info = oxen_client.create_repo(
+                    oxen_client.create_repo(
                         name=repo_name, description=f"Training data for {config.world_id}"
                     )
                     print("  ✓ Repository created")
@@ -3629,7 +3632,7 @@ RESPOND WITH ONLY THE EVENT DESCRIPTION, nothing else."""
                 if "fountain" in script_files and script_files["fountain"]:
                     try:
                         print("  Uploading Fountain script...")
-                        fountain_result = oxen_client.upload_dataset(
+                        oxen_client.upload_dataset(
                             file_path=str(script_files["fountain"]),
                             commit_message=f"Fountain screenplay for {run_id}",
                             dst_path=f"screenplays/{timestamp}/{script_files['fountain'].name}",
@@ -3643,7 +3646,7 @@ RESPOND WITH ONLY THE EVENT DESCRIPTION, nothing else."""
                 if "pdf" in script_files and script_files["pdf"]:
                     try:
                         print("  Uploading PDF script...")
-                        pdf_result = oxen_client.upload_dataset(
+                        oxen_client.upload_dataset(
                             file_path=str(script_files["pdf"]),
                             commit_message=f"PDF screenplay for {run_id}",
                             dst_path=f"screenplays/{timestamp}/{script_files['pdf'].name}",

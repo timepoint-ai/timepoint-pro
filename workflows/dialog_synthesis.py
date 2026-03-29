@@ -124,7 +124,7 @@ def _extract_dialog_outcome(
         pass
 
     # Build summary
-    speaker_names = list(set(t.get("speaker", "?") for t in turns))
+    speaker_names = list({t.get("speaker", "?") for t in turns})
     summary = f"Dialog between {', '.join(speaker_names[:4])} covering {len(topics)} topics."
     if turns:
         summary += f" {len(turns)} turns total."
@@ -1120,7 +1120,7 @@ def _generate_voice_examples(speaking_style: dict[str, str], character_id: str) 
     verbosity = speaking_style.get("verbosity", "moderate")
     formality = speaking_style.get("formality", "neutral")
     tone = speaking_style.get("tone", "neutral")
-    vocabulary = speaking_style.get("vocabulary", "general")
+    speaking_style.get("vocabulary", "general")
     speech_pattern = speaking_style.get("speech_pattern", "direct")
 
     # Build examples from the combination of style axes.
@@ -1214,12 +1214,6 @@ def _generate_voice_examples(speaking_style: dict[str, str], character_id: str) 
         examples = [_casualize_example(ex) for ex in examples]
 
     # --- Modulate by vocabulary ---
-    vocab_additions = {
-        "technical": "Frame responses using technical terminology, metrics, and data references.",
-        "philosophical": "Frame responses using abstract reasoning, analogies, and first-principles thinking.",
-        "business": "Frame responses using business language: ROI, runway, market position, deliverables.",
-        "general": "",
-    }
 
     # --- Modulate by speech_pattern: swap one example ---
     pattern_example = {
@@ -1376,9 +1370,11 @@ def _build_knowledge_from_exposures(
                     "source": exp.source or "direct_experience",
                     "confidence": exp.confidence,
                     "event_type": exp.event_type,
-                    "timestamp": exp.timestamp.isoformat()
-                    if hasattr(exp.timestamp, "isoformat")
-                    else str(exp.timestamp),
+                    "timestamp": (
+                        exp.timestamp.isoformat()
+                        if hasattr(exp.timestamp, "isoformat")
+                        else str(exp.timestamp)
+                    ),
                     "from_exposure": True,
                 }
             )
@@ -1776,7 +1772,7 @@ def _check_voice_distinctiveness(turns: list[dict]) -> float:
     for turn in turns:
         speaker = turn.get("speaker", "unknown")
         content = turn.get("content", "").lower()
-        words = set(w.strip(".,!?;:'\"()") for w in content.split() if len(w) > 3)
+        words = {w.strip(".,!?;:'\"()") for w in content.split() if len(w) > 3}
         speaker_vocabs.setdefault(speaker, set()).update(words)
 
     if len(speaker_vocabs) >= 2:
@@ -2020,7 +2016,7 @@ def _evaluate_dialog_subtext_quality(
     # Check 1: Withheld knowledge not stated verbatim
     for entity in entities:
         arc = entity.entity_metadata.get("character_arc", {})
-        unspoken = arc.get("unspoken_accumulation", [])
+        arc.get("unspoken_accumulation", [])
 
         # Also check proception state for withheld knowledge
         try:
@@ -2183,7 +2179,9 @@ def synthesize_dialog(
                     f"  ⚠️  Skipping {entity.entity_id} in dialog synthesis - has TTM tensor but not trained (no physical/cognitive tensors)"
                 )
             else:
-                print(f"  ⚠️  Skipping {entity.entity_id} in dialog synthesis - missing tensor data")
+                print(
+                    f"  ⚠️  Skipping {entity.entity_id} in dialog synthesis - missing tensor data"
+                )
             continue
 
         # Apply body-mind coupling
@@ -2272,9 +2270,11 @@ def synthesize_dialog(
             # Physical State (affects engagement)
             "age": physical.age,
             "health": physical.health_status,
-            "pain": {"level": physical.pain_level, "location": physical.pain_location}
-            if physical.pain_level > 0.1
-            else None,
+            "pain": (
+                {"level": physical.pain_level, "location": physical.pain_location}
+                if physical.pain_level > 0.1
+                else None
+            ),
             "stamina": physical.stamina,
             "physical_constraints": compute_age_constraints(physical.age),
             # Cognitive/Emotional State (affects tone)
@@ -2416,9 +2416,9 @@ def synthesize_dialog(
                 turn_position=0,
                 max_turns=max_turns_val,
                 adprs_envelope=entity_envelope,
-                evaluation_time=timepoint.timestamp
-                if hasattr(timepoint.timestamp, "tzinfo")
-                else None,
+                evaluation_time=(
+                    timepoint.timestamp if hasattr(timepoint.timestamp, "tzinfo") else None
+                ),
             )
             ctx.persona_params = params
 
@@ -2549,12 +2549,18 @@ def synthesize_dialog(
                     timepoint=timepoint,
                     llm=llm,
                     store=store,
-                    suppressed_impulses=[
-                        {"impulse": s, "context": dialog_obj.dialog_id, "suppressed_by": "steering"}
-                        for s in suppressed
-                    ]
-                    if suppressed
-                    else None,
+                    suppressed_impulses=(
+                        [
+                            {
+                                "impulse": s,
+                                "context": dialog_obj.dialog_id,
+                                "suppressed_by": "steering",
+                            }
+                            for s in suppressed
+                        ]
+                        if suppressed
+                        else None
+                    ),
                     withheld_knowledge=withheld if withheld else None,
                 )
 
@@ -2883,16 +2889,13 @@ Format non-human "speech" as narrated action or environmental description, NOT q
             f"    [M11] Dialog quality check FAILED (score={quality['score']:.2f}, "
             f"failures={quality['failures']}). Retrying with repair notes..."
         )
-        repair_prompt = (
-            prompt
-            + f"""
+        repair_prompt = prompt + f"""
 
 REPAIR INSTRUCTIONS (previous generation failed quality checks):
 {quality["repair_notes"]}
 
 These fixes are MANDATORY. The previous generation was rejected for violating these rules.
 """
-        )
         dialog_data = llm.generate_dialog(prompt=repair_prompt, max_tokens=6000)
         # Re-evaluate after retry (log only, don't retry again)
         retry_turns = []

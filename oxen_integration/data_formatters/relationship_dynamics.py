@@ -50,17 +50,17 @@ class RelationshipDynamicsFormatter:
                                 "id": entity_a_id,
                                 "type": node_a_data.get("entity_type", "unknown"),
                                 "role": node_a_data.get("role", "unknown"),
-                                "resolution": str(entity_a.resolution_level)
-                                if entity_a
-                                else "unknown",
+                                "resolution": (
+                                    str(entity_a.resolution_level) if entity_a else "unknown"
+                                ),
                             },
                             "entity_b": {
                                 "id": entity_b_id,
                                 "type": node_b_data.get("entity_type", "unknown"),
                                 "role": node_b_data.get("role", "unknown"),
-                                "resolution": str(entity_b.resolution_level)
-                                if entity_b
-                                else "unknown",
+                                "resolution": (
+                                    str(entity_b.resolution_level) if entity_b else "unknown"
+                                ),
                             },
                             "relationship_t0": {
                                 "type": edge_data.get("relationship", "unknown"),

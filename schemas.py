@@ -656,9 +656,9 @@ class BranchComparison(BaseModel):
     baseline_timeline: str
     counterfactual_timeline: str
     divergence_point: str | None  # First timepoint where timelines differ
-    metrics: dict[
-        str, dict[str, float]
-    ] = {}  # metric_name -> {"baseline": val, "counterfactual": val, "delta": diff}
+    metrics: dict[str, dict[str, float]] = (
+        {}
+    )  # metric_name -> {"baseline": val, "counterfactual": val, "delta": diff}
     causal_explanation: str = ""  # Explanation of why branches diverged
     key_events_differed: list[str] = []  # Events that occurred differently
     entity_states_differed: list[str] = []  # Entities whose states diverged
@@ -675,9 +675,9 @@ class AnimalEntity(BaseModel):
     species: str
     biological_state: dict[str, float] = {}  # age, health, energy, hunger, stress, etc.
     training_level: float = 0.0  # 0.0-1.0, how trained/domesticated
-    goals: list[
-        str
-    ] = []  # Simple behavioral goals: "avoid_pain", "seek_food", "trust_handler", etc.
+    goals: list[str] = (
+        []
+    )  # Simple behavioral goals: "avoid_pain", "seek_food", "trust_handler", etc.
     sensory_capabilities: dict[str, float] = {}  # vision, hearing, smell acuity
     physical_capabilities: dict[str, float] = {}  # strength, speed, endurance
 
@@ -689,9 +689,9 @@ class BuildingEntity(BaseModel):
     capacity: int = 0  # Maximum occupancy
     age: int = 0  # Age in years
     maintenance_state: float = 1.0  # 0.0-1.0, how well maintained
-    constraints: list[
-        str
-    ] = []  # Limitations: "cannot_move", "weather_dependent", "capacity_limited"
+    constraints: list[str] = (
+        []
+    )  # Limitations: "cannot_move", "weather_dependent", "capacity_limited"
     affordances: list[str] = []  # What it enables: "shelter", "symbolize_authority", "storage"
 
 
@@ -703,9 +703,9 @@ class AbstractEntity(BaseModel):
     carriers: list[str] = []  # Entity IDs holding this concept
     decay_rate: float = 0.01  # How quickly the concept fades
     coherence: float = 1.0  # Internal consistency of the concept
-    manifestation_forms: list[
-        str
-    ] = []  # How concept manifests: "beliefs", "behaviors", "cultural_practices"
+    manifestation_forms: list[str] = (
+        []
+    )  # How concept manifests: "beliefs", "behaviors", "cultural_practices"
 
 
 class AnyEntity(BaseModel):
@@ -726,9 +726,9 @@ class KamiEntity(BaseModel):
 
     visibility_state: str = "invisible"  # "visible", "invisible", "partially_visible", "disguised"
     disclosure_level: str = "unknown"  # "unknown", "rumored", "known", "worshiped", "feared"
-    influence_domain: list[
-        str
-    ] = []  # Areas of influence: "nature", "weather", "emotions", "fate", "protection"
+    influence_domain: list[str] = (
+        []
+    )  # Areas of influence: "nature", "weather", "emotions", "fate", "protection"
     manifestation_probability: float = 0.1  # 0.0-1.0, likelihood of appearing to mortals
     spiritual_power: float = 0.5  # 0.0-1.0, strength of supernatural influence
     mortal_perception: dict[str, float] = {}  # How different entity types perceive this kami

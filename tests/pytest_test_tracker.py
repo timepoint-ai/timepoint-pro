@@ -49,9 +49,11 @@ class TestTracker:
             "execution": {
                 "start_time": self.start_time.isoformat() if self.start_time else None,
                 "end_time": self.end_time.isoformat() if self.end_time else None,
-                "duration_seconds": (self.end_time - self.start_time).total_seconds()
-                if self.start_time and self.end_time
-                else 0,
+                "duration_seconds": (
+                    (self.end_time - self.start_time).total_seconds()
+                    if self.start_time and self.end_time
+                    else 0
+                ),
             },
             "files": self.test_files,
             "summary": {

@@ -105,9 +105,9 @@ def test_energy_cost_adjustments():
 
     # Assertions
     assert abs(day_cost - base_cost) < 0.1, f"Daytime work should cost ~{base_cost}, got {day_cost}"
-    assert night_cost > day_cost, (
-        f"Night work should cost more than day work, got {night_cost} vs {day_cost}"
-    )
+    assert (
+        night_cost > day_cost
+    ), f"Night work should cost more than day work, got {night_cost} vs {day_cost}"
     assert night_cost >= base_cost * 1.4, f"Night work should have penalty, got {night_cost}"
 
     print("✅ Energy cost adjustment tests passed!")
@@ -148,18 +148,18 @@ def test_circadian_validation():
         entity, {"activity": "work", "timepoint": timepoint_night, "circadian_config": config}
     )
     print(f"  Work at 3:00 AM: {result['message']}")
-    assert result["valid"] == False or "unusual" in result["message"].lower(), (
-        f"Night work should be flagged, got: {result}"
-    )
+    assert (
+        not result["valid"] or "unusual" in result["message"].lower()
+    ), f"Night work should be flagged, got: {result}"
 
     # Test highly implausible activity (social at 4 AM)
     result = validate_circadian_activity(
         entity, {"activity": "social", "timepoint": timepoint_night, "circadian_config": config}
     )
     print(f"  Social at 3:00 AM: {result['message']}")
-    assert result["valid"] == False or "unusual" in result["message"].lower(), (
-        f"Night social should be flagged, got: {result}"
-    )
+    assert (
+        not result["valid"] or "unusual" in result["message"].lower()
+    ), f"Night social should be flagged, got: {result}"
 
     print("✅ Circadian validation tests passed!")
 
@@ -180,12 +180,12 @@ def test_circadian_context_creation():
     assert morning_context.hour == 9
     assert "sleep" in morning_context.typical_activities
     assert "work" in morning_context.typical_activities
-    assert morning_context.fatigue_level < 0.5, (
-        f"Morning should have low fatigue, got {morning_context.fatigue_level}"
-    )
-    assert morning_context.energy_penalty == 1.0, (
-        f"Morning should have normal energy penalty, got {morning_context.energy_penalty}"
-    )
+    assert (
+        morning_context.fatigue_level < 0.5
+    ), f"Morning should have low fatigue, got {morning_context.fatigue_level}"
+    assert (
+        morning_context.energy_penalty == 1.0
+    ), f"Morning should have normal energy penalty, got {morning_context.energy_penalty}"
 
     # Test night context
     night_context = create_circadian_context(2, config)
@@ -193,12 +193,12 @@ def test_circadian_context_creation():
         f"  Night context (2 AM): fatigue={night_context.fatigue_level:.2f}, penalty={night_context.energy_penalty:.2f}"
     )
     assert night_context.hour == 2
-    assert night_context.energy_penalty > 1.0, (
-        f"Night should have energy penalty, got {night_context.energy_penalty}"
-    )
-    assert night_context.fatigue_level > 0.5, (
-        f"Late night should have high fatigue, got {night_context.fatigue_level}"
-    )
+    assert (
+        night_context.energy_penalty > 1.0
+    ), f"Night should have energy penalty, got {night_context.energy_penalty}"
+    assert (
+        night_context.fatigue_level > 0.5
+    ), f"Late night should have high fatigue, got {night_context.fatigue_level}"
 
     # Test social constraints
     assert "morning_business" in morning_context.social_constraints

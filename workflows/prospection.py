@@ -100,7 +100,7 @@ def generate_prospective_state(
     max_expectations = config.get("max_expectations", 5)
 
     # Build context for LLM
-    context = {
+    {
         "entity_id": entity.entity_id,
         "entity_type": getattr(entity, "entity_type", "person"),
         "current_timepoint": timepoint.event_description,

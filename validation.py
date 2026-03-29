@@ -70,13 +70,13 @@ def validate_information_conservation(entity: Entity, context: dict, store=None)
     if store:
         entity_id = getattr(entity, "entity_id", "")
         exposure_events = store.get_exposure_events(entity_id)
-        exposure = set(event.information for event in exposure_events)
+        exposure = {event.information for event in exposure_events}
     else:
         # Fallback to context-based validation for backward compatibility
         exposure_history = context.get("exposure_history", [])
         # Handle both list of strings and list of ExposureEvent objects
         if exposure_history and isinstance(exposure_history[0], ExposureEvent):
-            exposure = set(event.information for event in exposure_history)
+            exposure = {event.information for event in exposure_history}
         else:
             exposure = set(exposure_history)
 
@@ -516,11 +516,10 @@ def validate_dialog_relationship_consistency(entity: Entity, context: dict = Non
 
     # Build relationship map
     entity_map = {e.entity_id: e for e in entities}
-    relationship_map = {}
 
     for turn in turns:
         speaker_id = turn.get("speaker")
-        content = turn.get("content", "")
+        turn.get("content", "")
         emotional_tone = turn.get("emotional_tone", "").lower()
 
         # Check relationship with each other participant
@@ -666,7 +665,7 @@ def create_circadian_context(hour: int, circadian_config: dict) -> "CircadianCon
     # Build typical activities dictionary
     typical_activities = {}
     activity_probs = circadian_config.get("activity_probabilities", {})
-    for activity, config in activity_probs.items():
+    for activity, _config in activity_probs.items():
         prob = get_activity_probability(hour, activity, circadian_config)
         typical_activities[activity] = prob
 
@@ -1093,7 +1092,7 @@ def validate_spiritual_influence(entity: Entity, context: dict = None) -> dict:
 
             try:
                 kami = KamiEntity(**env_entity.entity_metadata)
-                participant_ids = action.get("participant_ids", [])
+                action.get("participant_ids", [])
 
                 # Check if kami's domain affects the action
                 action_type = action.get("action_type", "")
@@ -1471,8 +1470,6 @@ def validate_temporal_consistency(entity: Entity, context: dict = None) -> dict:
             "valid": True,
             "message": "No knowledge_item or timepoint specified for temporal consistency validation",
         }
-
-    learned_at = None  # Would need to query from store in real implementation
 
     # Simplified version - in practice would need access to exposure events
     if mode == "forward":

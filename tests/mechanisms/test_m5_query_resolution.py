@@ -115,7 +115,7 @@ class TestM5QueryHistoryTracking:
             assert history[0].entity_id == "entity_low_res"
         else:
             # Execute the query
-            response = qi.query(query_text)
+            qi.query(query_text)
 
             # Verify query history was saved
             history = store.get_query_history_for_entity(query_intent.target_entity)
@@ -241,7 +241,7 @@ class TestM5ResolutionEngine:
 
         needs_training = engine.check_retraining_needed(entity)
         # Should not need retraining with low centrality and few queries
-        assert needs_training == False
+        assert not needs_training
 
     @pytest.mark.unit
     def test_check_retraining_needed_high_centrality_low_training(self, setup_m5):
@@ -256,7 +256,7 @@ class TestM5ResolutionEngine:
 
         needs_training = engine.check_retraining_needed(entity)
         # Should need retraining
-        assert needs_training == True
+        assert needs_training
 
     @pytest.mark.unit
     def test_check_retraining_needed_high_query_count(self, setup_m5):
@@ -270,13 +270,13 @@ class TestM5ResolutionEngine:
 
         needs_training = engine.check_retraining_needed(entity)
         # Should need elevation
-        assert needs_training == True
+        assert needs_training
 
     @pytest.mark.integration
     def test_elevate_resolution_success(self, setup_m5):
         """Test successful resolution elevation"""
         engine = setup_m5["query_interface"].resolution_engine
-        store = setup_m5["store"]
+        setup_m5["store"]
         entity = setup_m5["entity_low"]
         timepoint = setup_m5["timepoint"]
 
@@ -284,7 +284,7 @@ class TestM5ResolutionEngine:
         initial_level = entity.resolution_level
         success = engine.elevate_resolution(entity, ResolutionLevel.SCENE, timepoint)
 
-        assert success == True
+        assert success
         assert entity.resolution_level == ResolutionLevel.SCENE
         assert entity.resolution_level != initial_level
 
@@ -314,7 +314,7 @@ class TestM5ResolutionEngine:
         success = engine.elevate_resolution(entity, ResolutionLevel.TENSOR_ONLY)
 
         # Should fail
-        assert success == False
+        assert not success
 
 
 class TestM5QueryPatternDetection:
@@ -327,8 +327,7 @@ class TestM5QueryPatternDetection:
         store = setup_m5["store"]
 
         # Start with low resolution entity
-        initial_entity = store.get_entity("entity_low_res")
-        initial_level = initial_entity.resolution_level
+        store.get_entity("entity_low_res")
 
         # Execute many queries
         for i in range(10):

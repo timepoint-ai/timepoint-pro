@@ -52,7 +52,7 @@ class TensorComposer:
 
         # Compute weighted sum
         result = np.zeros_like(tensors[0], dtype=np.float32)
-        for tensor, weight in zip(tensors, weights):
+        for tensor, weight in zip(tensors, weights, strict=False):
             result += tensor.astype(np.float32) * weight
 
         return result

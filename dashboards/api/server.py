@@ -303,9 +303,11 @@ async def get_convergence_set(set_id: str):
             "robustness_grade": s.robustness_grade,
             "consensus_edge_count": s.consensus_edge_count,
             "contested_edge_count": s.contested_edge_count,
-            "divergence_points": json.loads(s.divergence_points)
-            if isinstance(s.divergence_points, str)
-            else s.divergence_points,
+            "divergence_points": (
+                json.loads(s.divergence_points)
+                if isinstance(s.divergence_points, str)
+                else s.divergence_points
+            ),
             "created_at": s.created_at.isoformat() if s.created_at else None,
         }
     except HTTPException:

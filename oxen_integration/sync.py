@@ -52,9 +52,11 @@ class SyncState:
     def from_dict(cls, data: dict) -> "SyncState":
         """Create from dict."""
         return cls(
-            last_sync_time=datetime.fromisoformat(data["last_sync_time"])
-            if data.get("last_sync_time")
-            else None,
+            last_sync_time=(
+                datetime.fromisoformat(data["last_sync_time"])
+                if data.get("last_sync_time")
+                else None
+            ),
             last_local_version=data.get("last_local_version"),
             last_remote_version=data.get("last_remote_version"),
             synced_tensor_ids=set(data.get("synced_tensor_ids", [])),
@@ -396,9 +398,9 @@ class TensorSyncManager:
         pending = self.detect_pending_sync()
 
         return {
-            "last_sync": self.state.last_sync_time.isoformat()
-            if self.state.last_sync_time
-            else None,
+            "last_sync": (
+                self.state.last_sync_time.isoformat() if self.state.last_sync_time else None
+            ),
             "last_local_version": self.state.last_local_version,
             "last_remote_version": self.state.last_remote_version,
             "synced_count": len(self.state.synced_tensor_ids),

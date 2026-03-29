@@ -371,9 +371,11 @@ class TrainingContextManager:
                     {
                         "timepoint": parent.timepoint_id,
                         "event": parent.event_description,
-                        "timestamp": parent.timestamp.isoformat()
-                        if hasattr(parent.timestamp, "isoformat")
-                        else str(parent.timestamp),
+                        "timestamp": (
+                            parent.timestamp.isoformat()
+                            if hasattr(parent.timestamp, "isoformat")
+                            else str(parent.timestamp)
+                        ),
                         "importance": getattr(parent, "importance_score", 0.5),
                     },
                 )
@@ -455,11 +457,15 @@ DO NOT predict what happens next. Only describe the situation AS OF the last eve
                             "alignment": getattr(trajectory, "belief_alignment", 0.0),
                             "power_dynamic": getattr(trajectory, "power_dynamic", 0.0),
                             "interaction_count": getattr(trajectory, "interaction_count", 0),
-                            "dynamic": "allied"
-                            if getattr(trajectory, "trust_level", 0.5) > 0.7
-                            else "opposed"
-                            if getattr(trajectory, "trust_level", 0.5) < 0.3
-                            else "neutral",
+                            "dynamic": (
+                                "allied"
+                                if getattr(trajectory, "trust_level", 0.5) > 0.7
+                                else (
+                                    "opposed"
+                                    if getattr(trajectory, "trust_level", 0.5) < 0.3
+                                    else "neutral"
+                                )
+                            ),
                         }
                     )
 
@@ -584,9 +590,9 @@ DO NOT predict what happens next. Only describe the situation AS OF the last eve
             pt = entity.physical_tensor
             physical = {
                 "age": getattr(pt, "age", 0),
-                "energy": getattr(pt, "energy_budget", 100)
-                if hasattr(pt, "energy_budget")
-                else 100,
+                "energy": (
+                    getattr(pt, "energy_budget", 100) if hasattr(pt, "energy_budget") else 100
+                ),
             }
 
         cognitive = {}

@@ -240,7 +240,7 @@ class TestPhase1RealData:
         """Query tensors by maturity with realistic data."""
         # Save with varying maturities
         maturities = [0.3, 0.6, 0.85, 0.95]
-        for i, (tensor, metadata) in enumerate(detective_scenario):
+        for i, (tensor, _metadata) in enumerate(detective_scenario):
             record = TensorRecord(
                 tensor_id=f"maturity-test-{i}",
                 entity_id=f"entity-{i}",
@@ -277,7 +277,7 @@ class TestPhase2RealData:
         tensor_ids = []
 
         # Save tensors with low maturity
-        for i, (tensor, metadata) in enumerate(detective_scenario):
+        for i, (tensor, _metadata) in enumerate(detective_scenario):
             tensor_id = f"train-{i}-{uuid.uuid4().hex[:8]}"
             record = TensorRecord(
                 tensor_id=tensor_id,
@@ -433,9 +433,9 @@ class TestPhase3RealData:
         for i in range(8):
             min_val = min(ctx1[i], ctx2[i]) - 0.1
             max_val = max(ctx1[i], ctx2[i]) + 0.1
-            assert min_val <= ctx[i] <= max_val, (
-                f"Dim {i}: {ctx[i]} not between {min_val} and {max_val}"
-            )
+            assert (
+                min_val <= ctx[i] <= max_val
+            ), f"Dim {i}: {ctx[i]} not between {min_val} and {max_val}"
 
     def test_resolve_for_entity(self, populated_rag):
         """Test entity resolution with scenario context."""

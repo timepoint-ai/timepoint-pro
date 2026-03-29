@@ -56,9 +56,7 @@ def test_m14_mechanism_integration():
     try:
         # Run orchestrator
         orchestrator = OrchestratorAgent(llm, store)
-        result = orchestrator.orchestrate(
-            config.scenario_description, context=config.metadata or {}
-        )
+        orchestrator.orchestrate(config.scenario_description, context=config.metadata or {})
 
         # Check if M14 fired
         conn = sqlite3.connect("metadata/runs.db")

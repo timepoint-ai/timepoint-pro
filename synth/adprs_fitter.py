@@ -128,7 +128,7 @@ class ADPRSFitter:
 
         tau = np.asarray(tau, dtype=np.float64)
         activation = np.asarray(activation, dtype=np.float64)
-        n_points = len(tau)
+        len(tau)
 
         if prior_params is not None:
             result = self._warm_fit(tau, activation, entity_id, prior_params)
@@ -157,7 +157,7 @@ class ADPRSFitter:
                 tol=self.de_tol,
                 seed=self.de_seed,
             )
-            params = dict(zip(PARAM_NAMES, de_result.x))
+            params = dict(zip(PARAM_NAMES, de_result.x, strict=False))
             residual = float(de_result.fun)
             converged = de_result.success
         except Exception as e:
@@ -196,7 +196,7 @@ class ADPRSFitter:
                 bounds=(lower, upper),
                 maxfev=5000,
             )
-            params = dict(zip(PARAM_NAMES, popt))
+            params = dict(zip(PARAM_NAMES, popt, strict=False))
             residual = float(np.mean((adprs_waveform(tau, *popt) - activation) ** 2))
             converged = True
         except Exception as e:

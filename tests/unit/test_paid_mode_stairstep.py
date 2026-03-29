@@ -77,7 +77,7 @@ IMPORTANT: Return ONLY valid JSON, no explanation."""
 
         # Try to extract and parse JSON
         json_content = _extract_json_from_response(content)
-        parsed = json.loads(json_content)
+        json.loads(json_content)
 
         duration = time.time() - start_time
         return (True, duration, "")

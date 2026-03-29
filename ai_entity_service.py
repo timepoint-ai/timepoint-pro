@@ -513,7 +513,7 @@ class AIEntityService:
 
         # Get AI config from metadata
         ai_config = entity.entity_metadata.get("ai_config", {})
-        system_prompt = ai_config.get("system_prompt", "You are a helpful assistant.")
+        ai_config.get("system_prompt", "You are a helpful assistant.")
 
         # Use LLM to generate response
         # For now, return a simple response based on training data

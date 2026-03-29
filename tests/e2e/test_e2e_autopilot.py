@@ -86,9 +86,9 @@ class TestE2EEntityGeneration:
         # Step 4: Validate (validate the converted entity, not the EntityPopulation)
         validator = Validator()
         validation_result = validator.validate_entity(entity_to_save)
-        assert validation_result["valid"] or len(validation_result["violations"]) == 0, (
-            f"Entity validation failed: {validation_result.get('violations', [])}"
-        )
+        assert (
+            validation_result["valid"] or len(validation_result["violations"]) == 0
+        ), f"Entity validation failed: {validation_result.get('violations', [])}"
 
         # Step 5: Verify retrieval
         retrieved = graph_store.get_entity("washington", "e2e_tp_001")
@@ -124,9 +124,9 @@ class TestE2EEntityGeneration:
         for entity in entities:
             validator = Validator()
             result = validator.validate_entity(entity)
-            assert result["valid"] or len(result.get("violations", [])) == 0, (
-                f"Entity {entity.entity_id} validation failed: {result.get('violations', [])}"
-            )
+            assert (
+                result["valid"] or len(result.get("violations", [])) == 0
+            ), f"Entity {entity.entity_id} validation failed: {result.get('violations', [])}"
 
             graph_store.save_entity(entity)
 
@@ -427,9 +427,9 @@ class TestE2ESystemValidation:
                 entity_metadata={"related_to": f"entity_{3 - i}"},
             )
             result = validator.validate_entity(entity)
-            assert result["valid"] or len(result.get("violations", [])) == 0, (
-                f"Entity {entity.entity_id} validation failed: {result.get('violations', [])}"
-            )
+            assert (
+                result["valid"] or len(result.get("violations", [])) == 0
+            ), f"Entity {entity.entity_id} validation failed: {result.get('violations', [])}"
             graph_store.save_entity(entity)
             entities.append(entity)
 
@@ -476,9 +476,9 @@ class TestE2ESystemValidation:
 
         # Validate generated content
         result = validator.validate_entity(populated)
-        assert result["valid"] or len(result.get("violations", [])) == 0, (
-            f"LLM-generated entity failed validation: {result.get('violations', [])}"
-        )
+        assert (
+            result["valid"] or len(result.get("violations", [])) == 0
+        ), f"LLM-generated entity failed validation: {result.get('violations', [])}"
 
         # Check for required safety attributes
         cognitive_tensor = populated.entity_metadata.get("cognitive_tensor", {})

@@ -115,7 +115,7 @@ class TestProgressTracker:
         tracker = ProgressTracker(total_entities=10)
         tracker.start()
 
-        for i in range(10):
+        for _i in range(10):
             tracker.update_entity_generated()
 
         tracker.complete()
@@ -145,7 +145,7 @@ class TestProgressTracker:
         tracker.start()
 
         # Generate some entities
-        for i in range(10):
+        for _i in range(10):
             tracker.update_entity_generated()
 
         # Small delay to ensure elapsed time > 0
@@ -162,7 +162,7 @@ class TestProgressTracker:
         tracker.start()
 
         # Simulate some work
-        for i in range(50):
+        for _i in range(50):
             tracker.update_entity_generated()
         tracker.update_entity_failed(count=5)
         tracker.update_tokens(10000)
@@ -206,7 +206,7 @@ class TestProgressTracker:
         tracker = ProgressTracker(total_entities=50)
         tracker.start()
 
-        for i in range(25):
+        for _i in range(25):
             tracker.update_entity_generated()
         tracker.update_tokens(5000)
 

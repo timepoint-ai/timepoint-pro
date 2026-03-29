@@ -70,9 +70,9 @@ class ArchetypeSeed:
             "background": self.background,
             "archetype_id": self.archetype_id,
             "archetype_name": self.name,
-            "personality_traits": list(self.personality_hints.values())
-            if self.personality_hints
-            else [],
+            "personality_traits": (
+                list(self.personality_hints.values()) if self.personality_hints else []
+            ),
             # Physical defaults for human archetypes
             "physical_tensor": {
                 "age": 40.0,  # Default middle-aged

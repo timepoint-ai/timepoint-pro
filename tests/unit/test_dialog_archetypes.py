@@ -47,9 +47,9 @@ class TestArchetypeProfiles:
                 "deflection_style",
                 "sentence_style",
             ):
-                assert isinstance(profile[key], str) and len(profile[key]) > 5, (
-                    f"{archetype_id}.{key} should be a non-empty descriptive string"
-                )
+                assert (
+                    isinstance(profile[key], str) and len(profile[key]) > 5
+                ), f"{archetype_id}.{key} should be a non-empty descriptive string"
 
     def test_minimum_archetype_count(self):
         assert len(ARCHETYPE_RHETORICAL_PROFILES) >= 5, "Should have at least 5 archetypes"

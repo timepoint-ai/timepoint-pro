@@ -445,16 +445,22 @@ Configuration Summary:
             "original_description": self.original_description,
             "final_description": self.current_description,
             "final_config": self.current_config,
-            "final_validation": {
-                "is_valid": self.current_validation.is_valid if self.current_validation else None,
-                "errors": self.current_validation.errors if self.current_validation else [],
-                "warnings": self.current_validation.warnings if self.current_validation else [],
-                "confidence": self.current_validation.confidence_score
+            "final_validation": (
+                {
+                    "is_valid": (
+                        self.current_validation.is_valid if self.current_validation else None
+                    ),
+                    "errors": self.current_validation.errors if self.current_validation else [],
+                    "warnings": self.current_validation.warnings if self.current_validation else [],
+                    "confidence": (
+                        self.current_validation.confidence_score
+                        if self.current_validation
+                        else None
+                    ),
+                }
                 if self.current_validation
-                else None,
-            }
-            if self.current_validation
-            else None,
+                else None
+            ),
             "steps": [
                 {"step_type": step.step_type, "description": step.description, "data": step.data}
                 for step in self.refinement_history

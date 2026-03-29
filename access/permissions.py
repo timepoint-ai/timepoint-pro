@@ -205,9 +205,9 @@ class PermissionEnforcer:
                 rate_limit=row["rate_limit"],
                 created_at=datetime.fromisoformat(row["created_at"]),
                 modified_at=datetime.fromisoformat(row["modified_at"]),
-                accessed_at=datetime.fromisoformat(row["accessed_at"])
-                if row["accessed_at"]
-                else None,
+                accessed_at=(
+                    datetime.fromisoformat(row["accessed_at"]) if row["accessed_at"] else None
+                ),
                 access_count=row["access_count"],
             )
 

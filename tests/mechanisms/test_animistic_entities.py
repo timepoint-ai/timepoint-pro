@@ -33,34 +33,34 @@ class TestAnimisticEntityCreation:
         """Test animism level hierarchy"""
         config = {"level": 1}  # Animals and buildings only
 
-        assert should_create_animistic_entity("human", config) == False
-        assert should_create_animistic_entity("animal", config) == True
-        assert should_create_animistic_entity("building", config) == True
-        assert should_create_animistic_entity("object", config) == False
-        assert should_create_animistic_entity("abstract", config) == False
-        assert should_create_animistic_entity("any", config) == False
-        assert should_create_animistic_entity("kami", config) == False
-        assert should_create_animistic_entity("ai", config) == False
+        assert not should_create_animistic_entity("human", config)
+        assert should_create_animistic_entity("animal", config)
+        assert should_create_animistic_entity("building", config)
+        assert not should_create_animistic_entity("object", config)
+        assert not should_create_animistic_entity("abstract", config)
+        assert not should_create_animistic_entity("any", config)
+        assert not should_create_animistic_entity("kami", config)
+        assert not should_create_animistic_entity("ai", config)
 
         config["level"] = 2  # Up to objects
-        assert should_create_animistic_entity("object", config) == True
-        assert should_create_animistic_entity("abstract", config) == False
-        assert should_create_animistic_entity("any", config) == False
+        assert should_create_animistic_entity("object", config)
+        assert not should_create_animistic_entity("abstract", config)
+        assert not should_create_animistic_entity("any", config)
 
         config["level"] = 3  # All types up to abstract
-        assert should_create_animistic_entity("abstract", config) == True
-        assert should_create_animistic_entity("any", config) == False
+        assert should_create_animistic_entity("abstract", config)
+        assert not should_create_animistic_entity("any", config)
 
         config["level"] = 4  # Any entities
-        assert should_create_animistic_entity("any", config) == True
-        assert should_create_animistic_entity("kami", config) == False
+        assert should_create_animistic_entity("any", config)
+        assert not should_create_animistic_entity("kami", config)
 
         config["level"] = 5  # Kami spirits
-        assert should_create_animistic_entity("kami", config) == True
-        assert should_create_animistic_entity("ai", config) == False
+        assert should_create_animistic_entity("kami", config)
+        assert not should_create_animistic_entity("ai", config)
 
         config["level"] = 6  # AI entities
-        assert should_create_animistic_entity("ai", config) == True
+        assert should_create_animistic_entity("ai", config)
 
     def test_create_animal_entity(self):
         """Test animal entity creation with proper metadata"""
@@ -286,12 +286,12 @@ class TestAnimisticEntityValidation:
         # Valid action (within capacity)
         context = {"action": {"participant_count": 80}, "entities": [entity]}
         result = Validator._validators["environmental_constraints"]["func"](entity, context)
-        assert result["valid"] == True
+        assert result["valid"]
 
         # Invalid action (over capacity)
         context = {"action": {"participant_count": 150}, "entities": [entity]}
         result = Validator._validators["environmental_constraints"]["func"](entity, context)
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "capacity 100 exceeded" in result["message"]
 
     def test_environmental_constraints_building_integrity(self):
@@ -311,7 +311,7 @@ class TestAnimisticEntityValidation:
 
         context = {"action": {"participant_count": 50}, "entities": [entity]}
         result = Validator._validators["environmental_constraints"]["func"](entity, context)
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "structural integrity too low" in result["message"]
 
     def test_environmental_constraints_animal_health(self):
@@ -329,7 +329,7 @@ class TestAnimisticEntityValidation:
 
         context = {"action": {"action_type": "mount"}, "entities": [entity]}
         result = Validator._validators["environmental_constraints"]["func"](entity, context)
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "too unhealthy" in result["message"]
 
     def test_biological_plausibility_ranges(self):
@@ -349,14 +349,14 @@ class TestAnimisticEntityValidation:
         )
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == True
+        assert result["valid"]
 
         # Invalid animal (out of range)
         animal.biological_state["health"] = 1.5  # Invalid range
         entity.entity_metadata = animal.dict()
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "out of range" in result["message"]
 
     def test_biological_plausibility_building(self):
@@ -376,7 +376,7 @@ class TestAnimisticEntityValidation:
         )
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "out of range" in result["message"]
         assert "invalid age" in result["message"]
 
@@ -397,14 +397,14 @@ class TestAnimisticEntityValidation:
         )
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == True
+        assert result["valid"]
 
         # Invalid propagation vector
         concept.propagation_vector = [0.5, 0.5, 0.5]  # Doesn't sum to 1.0
         entity.entity_metadata = concept.dict()
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "doesn't sum to 1.0" in result["message"]
 
     def test_biological_plausibility_any_entity(self):
@@ -426,14 +426,14 @@ class TestAnimisticEntityValidation:
         entity = Entity(entity_id="valid_any", entity_type="any", entity_metadata=any_entity.dict())
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == True
+        assert result["valid"]
 
         # Invalid any entity (adaptability out of range)
         any_entity.adaptability_score = 1.5
         entity.entity_metadata = any_entity.dict()
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "out of range" in result["message"]
 
     def test_biological_plausibility_kami_entity(self):
@@ -454,14 +454,14 @@ class TestAnimisticEntityValidation:
         entity = Entity(entity_id="valid_kami", entity_type="kami", entity_metadata=kami.dict())
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == True
+        assert result["valid"]
 
         # Invalid kami entity (invalid visibility state)
         kami.visibility_state = "super_visible"
         entity.entity_metadata = kami.dict()
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "invalid visibility state" in result["message"]
 
         # Invalid kami entity (power out of range)
@@ -470,7 +470,7 @@ class TestAnimisticEntityValidation:
         entity.entity_metadata = kami.dict()
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "spiritual power out of range" in result["message"]
 
     def test_biological_plausibility_ai_entity(self):
@@ -494,14 +494,14 @@ class TestAnimisticEntityValidation:
         entity = Entity(entity_id="valid_ai", entity_type="ai", entity_metadata=ai_entity.dict())
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == True
+        assert result["valid"]
 
         # Invalid AI entity (temperature out of range)
         ai_entity.temperature = 3.0
         entity.entity_metadata = ai_entity.dict()
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "temperature out of range" in result["message"]
 
         # Invalid AI entity (empty model name)
@@ -510,7 +510,7 @@ class TestAnimisticEntityValidation:
         entity.entity_metadata = ai_entity.dict()
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "empty model_name" in result["message"]
 
         # Invalid AI entity (no safety features)
@@ -519,7 +519,7 @@ class TestAnimisticEntityValidation:
         entity.entity_metadata = ai_entity.dict()
 
         result = Validator._validators["biological_plausibility"]["func"](entity, {})
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "no input bleaching rules" in result["message"]
 
 
@@ -601,7 +601,7 @@ class TestAdvancedAnimisticValidators:
         context = {"action": action, "entities": [kami_entity]}
         result = Validator._validators["spiritual_influence"]["func"](kami_entity, context)
         # Should warn about unknown kami influence
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "Unknown kami" in result["message"]
         assert "may secretly influence" in result["message"]
 
@@ -611,7 +611,7 @@ class TestAdvancedAnimisticValidators:
 
         context = {"action": action, "entities": [kami_entity]}
         result = Validator._validators["spiritual_influence"]["func"](kami_entity, context)
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "Known kami" in result["message"]
 
     def test_adaptive_entity_behavior_validator(self):
@@ -636,14 +636,14 @@ class TestAdvancedAnimisticValidators:
             "context_goals": ["observe surroundings", "adapt to situation", "influence events"]
         }
         result = Validator._validators["adaptive_entity_behavior"]["func"](entity, context)
-        assert result["valid"] == True
+        assert result["valid"]
 
         # Poor context alignment
         context = {
             "context_goals": ["destroy everything", "cause chaos"]
         }  # No alignment with entity's goals
         result = Validator._validators["adaptive_entity_behavior"]["func"](entity, context)
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "poor adaptation" in result["message"]
 
         # Unstable high-adaptability entity
@@ -652,7 +652,7 @@ class TestAdvancedAnimisticValidators:
         context = {"context_goals": ["observe surroundings", "adapt to situation"]}
 
         result = Validator._validators["adaptive_entity_behavior"]["func"](entity, context)
-        assert result["valid"] == False
+        assert not result["valid"]
         assert "too unstable" in result["message"]
 
 

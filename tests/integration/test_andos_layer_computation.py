@@ -190,9 +190,9 @@ def test_branching():
     layers = compute_andos_layers(entities, "A", graph)
 
     assert len(layers) == 3
-    assert set(e.entity_id for e in layers[0]) == {"D", "E"}  # Periphery
-    assert set(e.entity_id for e in layers[1]) == {"B", "C"}
-    assert set(e.entity_id for e in layers[2]) == {"A"}  # Core
+    assert {e.entity_id for e in layers[0]} == {"D", "E"}  # Periphery
+    assert {e.entity_id for e in layers[1]} == {"B", "C"}
+    assert {e.entity_id for e in layers[2]} == {"A"}  # Core
 
 
 def test_cycle_detection():
@@ -277,7 +277,7 @@ def test_detective_prospection_structure():
     assert len(layers) >= 3  # At least 3, possibly 4 depending on structure
 
     # Layer 0 (periphery): street vendors
-    periphery_ids = set(e.entity_id for e in layers[0])
+    periphery_ids = {e.entity_id for e in layers[0]}
     assert "street_vendor_1" in periphery_ids
     assert "street_vendor_2" in periphery_ids
 

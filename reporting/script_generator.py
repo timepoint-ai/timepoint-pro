@@ -386,9 +386,9 @@ class ScriptGenerator:
                         character = Character(
                             id=entity_id,
                             name=self._format_character_name(entity_id),
-                            entity_type=entity.entity_type
-                            if hasattr(entity, "entity_type")
-                            else "human",
+                            entity_type=(
+                                entity.entity_type if hasattr(entity, "entity_type") else "human"
+                            ),
                             role=entity_metadata.get("role"),
                             description=self._generate_character_description(entity),
                             personality_traits=personality,

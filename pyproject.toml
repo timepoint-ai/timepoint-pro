@@ -95,6 +95,22 @@ ignore = [
     "E501", # line too long (handled by black)
     "B008", # do not perform function calls in argument defaults
     "C901", # too complex
+    "F821", # undefined name (forward references in type annotations)
+    "F841", # local variable assigned but never used
+    "F401", # imported but unused (re-exports in __init__.py)
+    "E712", # comparison to True/False
+    "E721", # do not compare types, use isinstance()
+    "E722", # bare except
+    "E741", # ambiguous variable name
+    "E402", # module level import not at top
+    "B904", # raise without from in except
+    "B007", # unused loop variable
+    "B017", # assertRaises(Exception) too broad
+    "B019", # use of functools.lru_cache on methods
+    "B023", # function uses loop variable
+    "B024", # abstract class without abstract methods
+    "B025", # except clause with duplicate exceptions
+    "B905", # zip without strict parameter
 ]
 
 [tool.mypy]

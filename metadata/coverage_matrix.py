@@ -41,7 +41,6 @@ class CoverageMatrix:
             mechanisms_str = f"{mechanisms_covered}/17 ({100 * mechanisms_covered // 17}%)"
 
             # Count unique resolutions assigned
-            unique_resolutions = set()
             # Parse resolution assignments from metadata if available
             # For now, we'll track this as we collect data
             resolutions_str = "N/A"

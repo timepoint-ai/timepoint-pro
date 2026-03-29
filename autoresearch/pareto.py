@@ -99,6 +99,8 @@ def summarize(frontier: list[ParetoPoint]) -> str:
     best_quality = max(frontier, key=lambda p: p.quality)
     best_efficiency = max(frontier, key=lambda p: p.metrics.cost_efficiency)
     lines.append(f"\nBest quality: {best_quality.run_id} (q={best_quality.quality:.4f})")
-    lines.append(f"Best efficiency: {best_efficiency.run_id} (eff={best_efficiency.metrics.cost_efficiency:.4f})")
+    lines.append(
+        f"Best efficiency: {best_efficiency.run_id} (eff={best_efficiency.metrics.cost_efficiency:.4f})"
+    )
 
     return "\n".join(lines)

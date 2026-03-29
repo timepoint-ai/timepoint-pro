@@ -88,14 +88,14 @@ def test_knowledge_enrichment():
 
         # Verify knowledge actually grew (should add 3 items for SCENE level)
         expected_growth = 3
-        assert final_knowledge_count >= initial_knowledge_count + expected_growth, (
-            f"Knowledge should grow by at least {expected_growth} items, got {final_knowledge_count - initial_knowledge_count}"
-        )
+        assert (
+            final_knowledge_count >= initial_knowledge_count + expected_growth
+        ), f"Knowledge should grow by at least {expected_growth} items, got {final_knowledge_count - initial_knowledge_count}"
 
         # Verify resolution level was updated
-        assert updated_entity.resolution_level == ResolutionLevel.SCENE, (
-            f"Resolution level should be SCENE, got {updated_entity.resolution_level}"
-        )
+        assert (
+            updated_entity.resolution_level == ResolutionLevel.SCENE
+        ), f"Resolution level should be SCENE, got {updated_entity.resolution_level}"
 
         # Check that exposure events were created for new knowledge
         exposure_events = store.get_exposure_events("george_washington")
@@ -108,9 +108,9 @@ def test_knowledge_enrichment():
         print(f"📚 New knowledge items added: {len(new_knowledge_events)}")
 
         # Should have at least the expected number of exposure events
-        assert len(new_knowledge_events) >= expected_growth, (
-            f"Should have at least {expected_growth} exposure events for new knowledge"
-        )
+        assert (
+            len(new_knowledge_events) >= expected_growth
+        ), f"Should have at least {expected_growth} exposure events for new knowledge"
 
         # Verify the new knowledge items are reasonable
         new_knowledge_items = updated_entity.entity_metadata["knowledge_state"][
@@ -132,9 +132,9 @@ def test_knowledge_enrichment():
         final_knowledge_count = len(final_entity.entity_metadata["knowledge_state"])
 
         # Should have grown significantly more
-        assert final_knowledge_count >= initial_knowledge_count + expected_growth + 8, (
-            f"Knowledge should grow by at least {expected_growth + 8} items total, got {final_knowledge_count - initial_knowledge_count}"
-        )
+        assert (
+            final_knowledge_count >= initial_knowledge_count + expected_growth + 8
+        ), f"Knowledge should grow by at least {expected_growth + 8} items total, got {final_knowledge_count - initial_knowledge_count}"
 
         print("✅ Knowledge enrichment test passed!")
         print(f"   Initial: {initial_knowledge_count} → Final: {final_knowledge_count} items")

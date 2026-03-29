@@ -233,7 +233,7 @@ class HarmonicFitter:
                 tol=self.de_tol,
                 seed=self.de_seed,
             )
-            fitted_params = dict(zip(param_names, de_result.x))
+            fitted_params = dict(zip(param_names, de_result.x, strict=False))
             residual = float(de_result.fun)
             converged = de_result.success
         except Exception as e:
@@ -287,7 +287,7 @@ class HarmonicFitter:
                 bounds=(lower, upper),
                 maxfev=5000,
             )
-            fitted_params = dict(zip(param_names, popt))
+            fitted_params = dict(zip(param_names, popt, strict=False))
             residual = float(np.mean((waveform_fn(tau, *popt) - activation) ** 2))
             converged = True
         except Exception as e:

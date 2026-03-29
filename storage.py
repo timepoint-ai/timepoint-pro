@@ -577,7 +577,7 @@ class GraphStore:
         """Get number of times resolution was elevated for an entity"""
         with Session(self.engine) as session:
             statement = select(QueryHistory).where(
-                QueryHistory.entity_id == entity_id, QueryHistory.resolution_elevated == True
+                QueryHistory.entity_id == entity_id, QueryHistory.resolution_elevated
             )
             return len(list(session.exec(statement).all()))
 

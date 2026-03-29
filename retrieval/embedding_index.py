@@ -169,7 +169,7 @@ class EmbeddingIndex:
             scores, indices = self._faiss_index.search(query.reshape(1, -1), k)
             results = [
                 (self._ids[idx], float(score))
-                for idx, score in zip(indices[0], scores[0])
+                for idx, score in zip(indices[0], scores[0], strict=False)
                 if idx >= 0 and idx < len(self._ids)
             ]
         else:

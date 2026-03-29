@@ -1,37 +1,40 @@
 # ============================================================================
 # cli.py - Hydra CLI for autopilot and steering
 # ============================================================================
-import hydra
-from omegaconf import DictConfig
-from pathlib import Path
-from datetime import datetime
 import warnings
+from datetime import datetime
+
+import hydra
 
 # Import all required modules
 import networkx as nx
-from storage import GraphStore
-from llm_v2 import LLMClient  # Use new centralized service
-from workflows import create_entity_training_workflow, WorkflowState
-from graph import create_test_graph, export_graph_data, print_graph_summary
+from omegaconf import DictConfig
+
 from evaluation import EvaluationMetrics
-from schemas import ResolutionLevel, Entity, ExposureEvent, Timepoint
-from reporting import generate_report, generate_markdown_report
-from temporal_chain import build_temporal_chain
+from graph import create_test_graph, print_graph_summary
+from llm_v2 import LLMClient  # Use new centralized service
 from query_interface import QueryInterface
+from reporting import generate_markdown_report, generate_report
+from schemas import Entity, ExposureEvent, ResolutionLevel
+from storage import GraphStore
+from temporal_chain import build_temporal_chain
 from tensors import TensorCompressor
-from schemas import TTMTensor
 from validation import Validator
-import json
+from workflows import WorkflowState, create_entity_training_workflow
+
 
 def _compress_entity_tensors(entity: Entity):
     """Compress entity tensors for storage efficiency (Mechanism 1.1)"""
-    from schemas import ResolutionLevel
-
     # Create synthetic tensor data for demonstration
     # In practice, this would be actual tensor data from LLM embeddings
     import numpy as np
+
+    from schemas import ResolutionLevel
+
     context_tensor = np.random.randn(50)  # Simulated context vector
-    biology_tensor = np.array([entity.entity_metadata.get("age", 50), 0.8, 0.7])  # age, health, energy
+    biology_tensor = np.array(
+        [entity.entity_metadata.get("age", 50), 0.8, 0.7]
+    )  # age, health, energy
     behavior_tensor = np.random.randn(10)  # Personality traits
 
     # Apply compression based on resolution level
@@ -41,11 +44,11 @@ def _compress_entity_tensors(entity: Entity):
             "context_pca": TensorCompressor.compress(context_tensor, "pca"),
             "context_svd": TensorCompressor.compress(context_tensor, "svd"),
             "biology_pca": TensorCompressor.compress(biology_tensor, "pca"),
-            "behavior_pca": TensorCompressor.compress(behavior_tensor, "pca")
+            "behavior_pca": TensorCompressor.compress(behavior_tensor, "pca"),
         }
         entity.entity_metadata["compressed"] = {k: v.tolist() for k, v in compressed.items()}
         # Remove full tensor data to save space
-        if hasattr(entity, 'tensor'):
+        if hasattr(entity, "tensor"):
             entity.tensor = None
 
     else:
@@ -54,7 +57,7 @@ def _compress_entity_tensors(entity: Entity):
             "context_pca": TensorCompressor.compress(context_tensor, "pca"),
             "context_svd": TensorCompressor.compress(context_tensor, "svd"),
             "biology_pca": TensorCompressor.compress(biology_tensor, "pca"),
-            "behavior_pca": TensorCompressor.compress(behavior_tensor, "pca")
+            "behavior_pca": TensorCompressor.compress(behavior_tensor, "pca"),
         }
         entity.entity_metadata["compressed"] = {k: v.tolist() for k, v in compressed.items()}
         # Keep full tensor for detailed operations
@@ -71,18 +74,18 @@ def main(cfg: DictConfig) -> None:
     llm_client = LLMClient.from_hydra_config(cfg, use_centralized_service=True)
 
     # Add cost warning for real API calls (always real LLM mode now)
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("REAL LLM MODE ACTIVE - API calls will incur costs")
     print(f"API: {cfg.llm.base_url}")
-    print("="*60 + "\n")
-    
+    print("=" * 60 + "\n")
+
     # Run autopilot mode
     if cfg.mode == "autopilot":
         run_autopilot(cfg, store, llm_client)
     elif cfg.mode == "evaluate":
         run_evaluation(cfg, store, llm_client)
     elif cfg.mode == "train":
-        if hasattr(cfg.training, 'context') and cfg.training.context:
+        if hasattr(cfg.training, "context") and cfg.training.context:
             run_historical_training(cfg, store, llm_client)
         else:
             run_training(cfg, store, llm_client)
@@ -96,6 +99,7 @@ def main(cfg: DictConfig) -> None:
         run_branching_explorer(cfg, store, llm_client)
     else:
         print(f"Unknown mode: {cfg.mode}")
+
 
 def run_model_management(cfg: DictConfig, llm_client: LLMClient):
     """Model management and selection interface"""
@@ -134,7 +138,7 @@ def run_model_management(cfg: DictConfig, llm_client: LLMClient):
                 print(f"  Name: {model_info['name']}")
                 print(f"  Description: {model_info['description']}")
                 print(f"  Context Length: {model_info['context_length']:,} tokens")
-                if model_info['pricing']:
+                if model_info["pricing"]:
                     print(f"  Pricing: {model_info['pricing']}")
             else:
                 print(f"❌ Model '{model_id}' not found")
@@ -157,9 +161,9 @@ def run_model_management(cfg: DictConfig, llm_client: LLMClient):
             try:
                 # Test with a simple relevance scoring call
                 score = llm_client.score_relevance("test query", "test knowledge")
-                    print(f"✅ Model test successful - relevance score: {score}")
-                except Exception as e:
-                    print(f"❌ Model test failed: {e}")
+                print(f"✅ Model test successful - relevance score: {score}")
+            except Exception as e:
+                print(f"❌ Model test failed: {e}")
 
         elif choice == "5":
             print("👋 Exiting model management")
@@ -168,10 +172,11 @@ def run_model_management(cfg: DictConfig, llm_client: LLMClient):
         else:
             print("❌ Invalid choice. Please enter 1-5.")
 
+
 def run_autopilot(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
     """Autopilot self-testing mode - now tests temporal chains"""
     print(f"\n{'='*70}")
-    print(f"AUTOPILOT MODE: Temporal Chain Testing")
+    print("AUTOPILOT MODE: Temporal Chain Testing")
     print(f"{'='*70}\n")
 
     # Test temporal chains of different lengths
@@ -190,14 +195,17 @@ def run_autopilot(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
         print(f"  Created {len(timepoints)} timepoints with causal links")
 
         # Run temporal training
-        print(f"  Running temporal training...")
+        print("  Running temporal training...")
         run_temporal_training(
-            DictConfig({"training": {"context": "founding_fathers_1789", "num_timepoints": length}}),
-            store, llm_client
+            DictConfig(
+                {"training": {"context": "founding_fathers_1789", "num_timepoints": length}}
+            ),
+            store,
+            llm_client,
         )
 
         # Run evaluation
-        print(f"  Running evaluation...")
+        print("  Running evaluation...")
         evaluator = EvaluationMetrics(store)
         entities = store.get_all_entities()
 
@@ -221,7 +229,7 @@ def run_autopilot(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
         # Check causal consistency (timepoints should have proper causal links)
         causal_violations = 0
         for i, tp in enumerate(timepoints[1:], 1):  # Skip first timepoint
-            if tp.causal_parent != timepoints[i-1].timepoint_id:
+            if tp.causal_parent != timepoints[i - 1].timepoint_id:
                 causal_violations += 1
 
         # Count exposure events per entity
@@ -234,7 +242,9 @@ def run_autopilot(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
         print(f"  Avg Temporal Coherence: {avg_coherence:.2f}")
         print(f"  Avg Knowledge Consistency: {avg_consistency:.2f}")
         print(f"  Causal Chain Violations: {causal_violations}")
-        print(f"  Exposure Events per Entity: {list(exposure_counts.values())[:3]}...")  # Show first 3
+        print(
+            f"  Exposure Events per Entity: {list(exposure_counts.values())[:3]}..."
+        )  # Show first 3
 
         result = {
             "temporal_length": length,
@@ -246,30 +256,38 @@ def run_autopilot(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
             "causal_violations": causal_violations,
             "total_exposure_events": sum(exposure_counts.values()),
             "cost": llm_client.cost,
-            "tokens": llm_client.token_count
+            "tokens": llm_client.token_count,
         }
         results.append(result)
         print(f"  Cost so far: ${llm_client.cost:.4f} ({llm_client.token_count} tokens)")
         print()
 
     # Summary
-    print("="*70)
+    print("=" * 70)
     print("AUTOPILOT SUMMARY: Temporal Chain Testing")
-    print("="*70)
+    print("=" * 70)
     print(f"{'Length':<10} {'Entities':<12} {'Coherence':<12} {'Consistency':<14} {'Cost':<10}")
     print("-" * 70)
 
     for result in results:
-        print(f"{result['temporal_length']:<10} {result['entities']:<12} {result['avg_temporal_coherence']:<12.2f} "
-              f"{result['avg_knowledge_consistency']:<14.2f} ${result['cost']:<9.4f}")
+        print(
+            f"{result['temporal_length']:<10} {result['entities']:<12} {result['avg_temporal_coherence']:<12.2f} "
+            f"{result['avg_knowledge_consistency']:<14.2f} ${result['cost']:<9.4f}"
+        )
 
-    total_cost = sum(r['cost'] for r in results)
-    total_tokens = sum(r['tokens'] for r in results)
-    avg_coherence = sum(r['avg_temporal_coherence'] for r in results) / len(results) if results else 0
-    avg_consistency = sum(r['avg_knowledge_consistency'] for r in results) / len(results) if results else 0
+    total_cost = sum(r["cost"] for r in results)
+    total_tokens = sum(r["tokens"] for r in results)
+    avg_coherence = (
+        sum(r["avg_temporal_coherence"] for r in results) / len(results) if results else 0
+    )
+    avg_consistency = (
+        sum(r["avg_knowledge_consistency"] for r in results) / len(results) if results else 0
+    )
     print("-" * 70)
-    print(f"{'AVERAGE':<10} {'':<12} {avg_coherence:<12.2f} {avg_consistency:<14.2f} ${total_cost:<9.4f}")
-    print("="*70 + "\n")
+    print(
+        f"{'AVERAGE':<10} {'':<12} {avg_coherence:<12.2f} {avg_consistency:<14.2f} ${total_cost:<9.4f}"
+    )
+    print("=" * 70 + "\n")
 
     # Generate reports
     report_results = {
@@ -278,12 +296,13 @@ def run_autopilot(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
         "total_tokens": total_tokens,
         "avg_coherence": avg_coherence,
         "avg_consistency": avg_consistency,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
     generate_report("autopilot", report_results)
     generate_markdown_report("autopilot", report_results)
 
     return results
+
 
 def run_evaluation(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
     """Run evaluation metrics"""
@@ -315,7 +334,6 @@ def run_evaluation(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
 
     # Compute resolution distribution
     resolution_counts = {}
-    from schemas import ResolutionLevel
     for entity in entities:
         res_level = entity.resolution_level.value
         resolution_counts[res_level] = resolution_counts.get(res_level, 0) + 1
@@ -325,10 +343,11 @@ def run_evaluation(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
         "entities_evaluated": len(entities),
         "resolution_distribution": resolution_counts,
         "cost": llm_client.cost,
-        "tokens": llm_client.token_count
+        "tokens": llm_client.token_count,
     }
     generate_report("evaluation", eval_results)
     generate_markdown_report("evaluation", eval_results)
+
 
 def run_training(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
     """Run entity training workflow"""
@@ -342,7 +361,7 @@ def run_training(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
         timepoint=datetime.now().isoformat(),
         resolution=ResolutionLevel(cfg.training.target_resolution),
         violations=[],
-        results={}
+        results={},
     )
 
     final_state = workflow.invoke(state)
@@ -360,23 +379,22 @@ def run_training(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
                     "energy_budget": population.energy_budget,
                     "personality_traits": population.personality_traits,
                     "temporal_awareness": population.temporal_awareness,
-                    "confidence": population.confidence
-                }
+                    "confidence": population.confidence,
+                },
             )
             store.save_entity(entity)
             print(f"  Saved: {entity.entity_id}")
 
     # Compute graph metrics
     import networkx as nx
-    from tensors import compute_ttm_metrics
 
     # Suppress RuntimeWarning for small graphs
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', category=RuntimeWarning)
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
         centralities = nx.eigenvector_centrality(graph)
     top_entities = sorted(centralities.items(), key=lambda x: x[1], reverse=True)[:5]
 
-    print(f"\nTop 5 Most Central Entities:")
+    print("\nTop 5 Most Central Entities:")
     for entity_id, centrality in top_entities:
         print(f"  {entity_id}: {centrality:.4f}")
 
@@ -387,53 +405,54 @@ def run_training(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
     # Generate reports
     training_results = {
         "entities_saved": len(final_state.get("results", {}).get("populations", [])),
-        "violations": len(final_state['violations']),
+        "violations": len(final_state["violations"]),
         "cost": llm_client.cost,
         "tokens": llm_client.token_count,
         "graph_size": cfg.training.graph_size,
-        "top_centralities": dict(top_entities)
+        "top_centralities": dict(top_entities),
     }
     generate_report("training", training_results)
     generate_markdown_report("training", training_results)
 
+
 def run_historical_training(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
     """Train entities with rich historical context"""
     from entity_templates import HISTORICAL_CONTEXTS, get_context_prompt
-    
+
     context_name = cfg.training.get("context", "founding_fathers_1789")
     context = HISTORICAL_CONTEXTS[context_name]
-    
+
     print(f"\n{'='*70}")
     print(f"HISTORICAL CONTEXT: {context['event']}")
     print(f"Date: {context['timepoint']}")
     print(f"Entities: {len(context['entities'])}")
     print(f"{'='*70}\n")
-    
+
     # Create graph with historical relationships
     graph = nx.Graph()
-    
+
     for entity_data in context["entities"]:
         graph.add_node(
             entity_data["entity_id"],
             role=entity_data["role"],
             age=entity_data["age"],
-            location=entity_data["location"]
+            location=entity_data["location"],
         )
-    
+
     for source, target, rel_type in context["relationships"]:
         graph.add_edge(source, target, relationship=rel_type)
-    
-    print(f"Graph structure:")
+
+    print("Graph structure:")
     print(f"  Nodes: {graph.number_of_nodes()}")
     print(f"  Edges: {graph.number_of_edges()}")
     print(f"  Relationships: {[r for _, _, r in context['relationships']]}\n")
-    
+
     # Populate each entity with context-aware prompts
     print("Populating entities with historical context...\n")
-    
+
     for entity_data in context["entities"]:
         entity_id = entity_data["entity_id"]
-        
+
         # Enhanced context for LLM
         enhanced_context = {
             "historical_context": get_context_prompt(context_name),
@@ -442,14 +461,15 @@ def run_historical_training(cfg: DictConfig, store: GraphStore, llm_client: LLMC
             "entity_location": entity_data["location"],
             "timepoint": context["timepoint"],
             "event": context["event"],
-            "relationships": [r for s, t, r in context["relationships"] if s == entity_id or t == entity_id]
+            "relationships": [
+                r for s, t, r in context["relationships"] if s == entity_id or t == entity_id
+            ],
         }
-        
+
         population = llm_client.populate_entity(
-            {"entity_id": entity_id, "timestamp": context["timepoint"]},
-            enhanced_context
+            {"entity_id": entity_id, "timestamp": context["timepoint"]}, enhanced_context
         )
-        
+
         entity = Entity(
             entity_id=entity_id,
             entity_type="historical_person",
@@ -463,8 +483,8 @@ def run_historical_training(cfg: DictConfig, store: GraphStore, llm_client: LLMC
                 "personality_traits": population.personality_traits,
                 "temporal_awareness": population.temporal_awareness,
                 "confidence": population.confidence,
-                "historical_context": context["event"]
-            }
+                "historical_context": context["event"],
+            },
         )
 
         store.save_entity(entity)
@@ -479,7 +499,7 @@ def run_historical_training(cfg: DictConfig, store: GraphStore, llm_client: LLMC
                 source=context["event"],  # The historical event was the source
                 timestamp=datetime.fromisoformat(context["timepoint"]),
                 confidence=population.confidence,
-                timepoint_id=f"{context_name}_{context['timepoint']}"
+                timepoint_id=f"{context_name}_{context['timepoint']}",
             )
             exposure_events.append(exposure_event)
 
@@ -489,10 +509,11 @@ def run_historical_training(cfg: DictConfig, store: GraphStore, llm_client: LLMC
         print(f"    Age: {entity_data['age']}, Location: {entity_data['location']}")
         print(f"    Knowledge items: {len(population.knowledge_state)}")
         print(f"    Confidence: {population.confidence:.2f}\n")
-    
-    print(f"\nTraining complete!")
+
+    print("\nTraining complete!")
     print(f"Total cost: ${llm_client.cost:.4f}")
     print(f"Tokens used: {llm_client.token_count}")
+
 
 def run_temporal_training(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
     """Train entities across a temporal chain with causal evolution"""
@@ -537,7 +558,9 @@ def run_temporal_training(cfg: DictConfig, store: GraphStore, llm_client: LLMCli
             # Get previous knowledge state (causal propagation)
             previous_knowledge = None
             if timepoint.causal_parent:
-                previous_knowledge = store.get_entity_knowledge_at_timepoint(entity_id, timepoint.causal_parent)
+                previous_knowledge = store.get_entity_knowledge_at_timepoint(
+                    entity_id, timepoint.causal_parent
+                )
 
             # Enhanced context for this timepoint
             enhanced_context = {
@@ -548,14 +571,16 @@ def run_temporal_training(cfg: DictConfig, store: GraphStore, llm_client: LLMCli
                 "timepoint": timepoint.timestamp.isoformat(),
                 "event": timepoint.event_description,
                 "timepoint_id": timepoint.timepoint_id,
-                "relationships": [r for s, t, r in context["relationships"] if s == entity_id or t == entity_id]
+                "relationships": [
+                    r for s, t, r in context["relationships"] if s == entity_id or t == entity_id
+                ],
             }
 
             # Populate entity with causal context
             population = llm_client.populate_entity(
                 {"entity_id": entity_id, "timestamp": timepoint.timestamp.isoformat()},
                 enhanced_context,
-                previous_knowledge
+                previous_knowledge,
             )
 
             # Update or create entity record (only create if this is the first timepoint)
@@ -575,8 +600,8 @@ def run_temporal_training(cfg: DictConfig, store: GraphStore, llm_client: LLMCli
                         "personality_traits": population.personality_traits,
                         "temporal_awareness": population.temporal_awareness,
                         "confidence": population.confidence,
-                        "historical_context": context["event"]
-                    }
+                        "historical_context": context["event"],
+                    },
                 )
                 store.save_entity(entity)
 
@@ -598,12 +623,14 @@ def run_temporal_training(cfg: DictConfig, store: GraphStore, llm_client: LLMCli
                     "store": store,
                     "graph": graph,  # For network flow validation
                     "all_entity_knowledge": all_entity_knowledge,  # For network flow validation
-                    "exposure_history": []  # Could be populated from exposure events
+                    "exposure_history": [],  # Could be populated from exposure events
                 }
                 violations = Validator.validate_all(entity, validation_context)
                 if violations:
                     for violation in violations:
-                        print(f"  ⚠️  VALIDATION {violation['severity']}: {entity_id} - {violation['message']}")
+                        print(
+                            f"  ⚠️  VALIDATION {violation['severity']}: {entity_id} - {violation['message']}"
+                        )
 
             else:
                 # Subsequent timepoint - update knowledge state
@@ -616,7 +643,9 @@ def run_temporal_training(cfg: DictConfig, store: GraphStore, llm_client: LLMCli
                     previous_knowledge = entity.entity_metadata.get("knowledge_state", [])
                     previous_personality = entity.entity_metadata.get("personality_traits", [])
 
-                    updated_knowledge = entity.entity_metadata["knowledge_state"] + list(added_knowledge)
+                    updated_knowledge = entity.entity_metadata["knowledge_state"] + list(
+                        added_knowledge
+                    )
                     entity.entity_metadata["knowledge_state"] = updated_knowledge
                     store.save_entity(entity)
 
@@ -631,27 +660,32 @@ def run_temporal_training(cfg: DictConfig, store: GraphStore, llm_client: LLMCli
                 all_entity_knowledge[eid] = entity.entity_metadata.get("knowledge_state", [])
 
             validation_context = {
-                "previous_knowledge": previous_knowledge if 'previous_knowledge' in locals() else [],
-                "previous_personality": previous_personality if 'previous_personality' in locals() else [],
+                "previous_knowledge": (
+                    previous_knowledge if "previous_knowledge" in locals() else []
+                ),
+                "previous_personality": (
+                    previous_personality if "previous_personality" in locals() else []
+                ),
                 "timepoint": timepoint,
                 "timepoint_id": timepoint.timepoint_id,  # For temporal causality validation
                 "store": store,
                 "graph": graph,  # For network flow validation
                 "all_entity_knowledge": all_entity_knowledge,  # For network flow validation
-                "exposure_history": []  # Could be populated from exposure events
+                "exposure_history": [],  # Could be populated from exposure events
             }
             violations = Validator.validate_all(entity, validation_context)
             if violations:
                 for violation in violations:
-                    print(f"  ⚠️  VALIDATION {violation['severity']}: {entity_id} - {violation['message']}")
+                    print(
+                        f"  ⚠️  VALIDATION {violation['severity']}: {entity_id} - {violation['message']}"
+                    )
                     # For ERROR severity, we could block the update, but for now just log
 
             # Record exposure events for new knowledge
             exposure_events = []
             for knowledge_item in population.knowledge_state:
                 # Only create exposure event if this is new knowledge or first timepoint
-                if (previous_knowledge is None or
-                    knowledge_item not in previous_knowledge):
+                if previous_knowledge is None or knowledge_item not in previous_knowledge:
                     exposure_event = ExposureEvent(
                         entity_id=entity_id,
                         event_type="experienced",  # They experienced the event at this timepoint
@@ -659,21 +693,24 @@ def run_temporal_training(cfg: DictConfig, store: GraphStore, llm_client: LLMCli
                         source=timepoint.event_description,
                         timestamp=timepoint.timestamp,
                         confidence=population.confidence,
-                        timepoint_id=timepoint.timepoint_id
+                        timepoint_id=timepoint.timepoint_id,
                     )
                     exposure_events.append(exposure_event)
 
             if exposure_events:
                 store.save_exposure_events(exposure_events)
 
-            knowledge_growth = len(population.knowledge_state) - (len(previous_knowledge) if previous_knowledge else 0)
+            knowledge_growth = len(population.knowledge_state) - (
+                len(previous_knowledge) if previous_knowledge else 0
+            )
             print(f"  ✓ {entity_id}: +{knowledge_growth} knowledge items")
 
         print()
 
-    print(f"Temporal training complete!")
+    print("Temporal training complete!")
     print(f"Total cost: ${llm_client.cost:.4f}")
     print(f"Timepoints processed: {len(timepoints)}")
+
 
 def run_interactive(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
     """Interactive query REPL for the temporal simulation"""
@@ -696,26 +733,28 @@ def run_interactive(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
             if not query:
                 continue
 
-            if query.lower() in ['exit', 'quit', 'q']:
+            if query.lower() in ["exit", "quit", "q"]:
                 print("\nGoodbye! 👋")
                 break
 
-            if query.lower() in ['help', 'h', '?']:
+            if query.lower() in ["help", "h", "?"]:
                 _show_interactive_help()
                 continue
 
-            if query.lower() == 'status':
+            if query.lower() == "status":
                 _show_simulation_status(store, llm_client)
                 continue
 
-            if query.lower() == 'models':
+            if query.lower() == "models":
                 run_model_management(cfg, llm_client)
                 continue
 
             # Parse and respond to query
             print("  Parsing query...")
             intent = query_interface.parse_query(query)
-            print(f"  Intent: {intent.information_type} about {intent.target_entity or 'unknown'} (confidence: {intent.confidence:.1f})")
+            print(
+                f"  Intent: {intent.information_type} about {intent.target_entity or 'unknown'} (confidence: {intent.confidence:.1f})"
+            )
 
             print("  Synthesizing response...")
             response = query_interface.synthesize_response(intent)
@@ -728,6 +767,7 @@ def run_interactive(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
         except Exception as e:
             print(f"Error processing query: {e}")
             print("Try again or type 'help' for guidance.\n")
+
 
 def _show_interactive_help():
     """Show help text for interactive mode"""
@@ -756,12 +796,13 @@ Note: The system uses causal temporal simulation where entities evolve over time
 """
     print(help_text)
 
+
 def _show_simulation_status(store: GraphStore, llm_client):
     """Show current simulation status"""
-    entities = store.get_all_entities() if hasattr(store, 'get_all_entities') else []
+    entities = store.get_all_entities() if hasattr(store, "get_all_entities") else []
     timepoints = store.get_all_timepoints()
 
-    print(f"\nSimulation Status:")
+    print("\nSimulation Status:")
     print(f"  Entities: {len(entities)}")
     print(f"  Timepoints: {len(timepoints)}")
     print(f"  Total cost: ${llm_client.cost:.4f}")
@@ -777,22 +818,24 @@ def _show_simulation_status(store: GraphStore, llm_client):
             res = entity.resolution_level.value
             resolution_counts[res] = resolution_counts.get(res, 0) + 1
 
-        print(f"  Resolution distribution:")
+        print("  Resolution distribution:")
         for res, count in resolution_counts.items():
             print(f"    {res}: {count} entities")
 
     print()
 
+
 def run_branching_explorer(cfg: DictConfig, store: GraphStore, llm_client: LLMClient):
     """Interactive counterfactual branching explorer"""
     print(f"\n{'='*60}")
     print("COUNTERFACTUAL BRANCHING EXPLORER")
-    print("="*60)
+    print("=" * 60)
     print("Explore 'what-if' scenarios by creating alternate timeline branches")
     print("Type 'help' for commands, 'quit' to exit")
     print()
 
     from query_interface import QueryInterface
+
     query_interface = QueryInterface(store, llm_client)
 
     while True:
@@ -801,9 +844,9 @@ def run_branching_explorer(cfg: DictConfig, store: GraphStore, llm_client: LLMCl
             if not query:
                 continue
 
-            if query.lower() in ['quit', 'exit', 'q']:
+            if query.lower() in ["quit", "exit", "q"]:
                 break
-            elif query.lower() == 'help':
+            elif query.lower() == "help":
                 print("\nAvailable commands:")
                 print("  'what if [scenario]' - Create counterfactual branch")
                 print("  'quit' - Exit branching explorer")
@@ -815,7 +858,16 @@ def run_branching_explorer(cfg: DictConfig, store: GraphStore, llm_client: LLMCl
                 continue
 
             # Check if it's a counterfactual query
-            if any(keyword in query.lower() for keyword in ['what if', 'what would happen if', 'suppose', 'imagine if', 'if only']):
+            if any(
+                keyword in query.lower()
+                for keyword in [
+                    "what if",
+                    "what would happen if",
+                    "suppose",
+                    "imagine if",
+                    "if only",
+                ]
+            ):
                 print(f"\n🔀 Analyzing counterfactual scenario: {query}")
                 print("-" * 50)
 
@@ -839,6 +891,7 @@ def run_branching_explorer(cfg: DictConfig, store: GraphStore, llm_client: LLMCl
         except Exception as e:
             print(f"❌ Error: {e}")
             continue
+
 
 if __name__ == "__main__":
     main()

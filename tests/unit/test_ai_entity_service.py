@@ -90,17 +90,17 @@ class TestRateLimiter:
     def test_rate_limit_under_limit(self):
         """Test requests under rate limit"""
         key = "test_user"
-        for i in range(10):
-            assert self.limiter.check_rate_limit(key, 20, 60) == True
+        for _i in range(10):
+            assert self.limiter.check_rate_limit(key, 20, 60)
 
     def test_rate_limit_over_limit(self):
         """Test requests over rate limit"""
         key = "test_user"
         # Use very short window for testing
-        for i in range(5):
+        for _i in range(5):
             self.limiter.check_rate_limit(key, 3, 1)
         # This one should fail
-        assert self.limiter.check_rate_limit(key, 3, 1) == False
+        assert not self.limiter.check_rate_limit(key, 3, 1)
 
 
 class TestResponseCache:
@@ -203,7 +203,7 @@ class TestAIEntityRunner:
         response = await self.runner.process_request(request)
 
         assert response.response == cached_response
-        assert response.metadata.get("cached") == True
+        assert response.metadata.get("cached")
 
     @pytest.mark.asyncio
     async def test_process_request_rate_limited(self):

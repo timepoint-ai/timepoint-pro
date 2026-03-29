@@ -1348,7 +1348,7 @@ def run_all_templates(mode: str = "quick", skip_summaries: bool = False, paralle
 
     # Build template lists from verified catalog entries
     showcase_templates = _load_templates(category="showcase")
-    convergence_templates = _load_templates(category="convergence")
+    _load_templates(category="convergence")
     quick_templates = showcase_templates  # All verified showcase templates
     full_templates = []  # No separate full category needed - all verified templates are in showcase
     timepoint_corporate_templates = []  # Deleted: no longer in catalog
@@ -1770,7 +1770,7 @@ def run_all_templates(mode: str = "quick", skip_summaries: bool = False, paralle
         )
         print(f"Tracked: {', '.join(sorted(historical_mechanisms))}")
 
-        missing = set([f"M{i}" for i in range(1, 20)]) - historical_mechanisms
+        missing = {f"M{i}" for i in range(1, 20)} - historical_mechanisms
         if missing:
             print(f"\n⚠️  Missing: {', '.join(sorted(missing))}")
         else:
@@ -1996,16 +1996,20 @@ def run_templates_via_api(
 
     # Build simulation requests from templates
     simulation_requests = []
-    for name, config, mechanisms in templates:
+    for name, config, _mechanisms in templates:
         # Extract configuration details
         sim_request = {
             "template_id": name,
-            "entity_count": config.entities.count
-            if hasattr(config, "entities") and hasattr(config.entities, "count")
-            else 3,
-            "timepoint_count": config.timepoints.count
-            if hasattr(config, "timepoints") and hasattr(config.timepoints, "count")
-            else 5,
+            "entity_count": (
+                config.entities.count
+                if hasattr(config, "entities") and hasattr(config.entities, "count")
+                else 3
+            ),
+            "timepoint_count": (
+                config.timepoints.count
+                if hasattr(config, "timepoints") and hasattr(config.timepoints, "count")
+                else 5
+            ),
         }
 
         # Add custom scenario if available

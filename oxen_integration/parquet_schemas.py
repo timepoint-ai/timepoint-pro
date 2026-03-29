@@ -420,7 +420,7 @@ def validate_parquet_file(path: str, expected_type: str = "instance") -> bool:
     expected_fields = set(expected_schema.names)
 
     missing = expected_fields - actual_fields
-    extra = actual_fields - expected_fields
+    actual_fields - expected_fields
 
     if missing:
         raise ValueError(f"Missing required fields: {missing}")

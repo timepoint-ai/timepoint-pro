@@ -13,7 +13,6 @@ import random
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -64,7 +63,7 @@ class RunMetrics:
         }
 
 
-def extract_from_db(db_path: str, run_id: str) -> Optional[RunMetrics]:
+def extract_from_db(db_path: str, run_id: str) -> RunMetrics | None:
     """Extract metrics from a completed run in metadata/runs.db."""
     db = Path(db_path)
     if not db.exists():
@@ -73,9 +72,7 @@ def extract_from_db(db_path: str, run_id: str) -> Optional[RunMetrics]:
     conn = sqlite3.connect(str(db))
     conn.row_factory = sqlite3.Row
     try:
-        row = conn.execute(
-            "SELECT * FROM runs WHERE id = ?", (run_id,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()
         if not row:
             return None
 
@@ -91,13 +88,12 @@ def extract_from_db(db_path: str, run_id: str) -> Optional[RunMetrics]:
             knowledge_consistency=quality.get("knowledge_consistency", 0.0),
             biological_plausibility=quality.get("biological_plausibility", 0.0),
             convergence_score=quality.get("convergence", 0.0),
-            causal_resolution=quality.get("temporal_coherence", 0.0) * quality.get("convergence", 0.0),
+            causal_resolution=quality.get("temporal_coherence", 0.0)
+            * quality.get("convergence", 0.0),
             quality_composite=_weighted_composite(quality),
             total_tokens=row.get("total_tokens", 0),
             cost_usd=row.get("cost_usd", 0.0),
-            cost_efficiency=_safe_div(
-                _weighted_composite(quality), row.get("cost_usd", 0.01)
-            ),
+            cost_efficiency=_safe_div(_weighted_composite(quality), row.get("cost_usd", 0.01)),
             duration_seconds=row.get("duration_seconds", 0.0),
             is_dry_run=False,
         )
@@ -134,7 +130,7 @@ def synthetic_metrics(
     coverage = (temporal + knowledge + biological) / 3.0
     causal_res = coverage * convergence
 
-    quality = (temporal * 0.3 + knowledge * 0.3 + biological * 0.2 + convergence * 0.2)
+    quality = temporal * 0.3 + knowledge * 0.3 + biological * 0.2 + convergence * 0.2
 
     # Cost model: higher max_tokens and bigger models cost more
     base_cost = 0.15

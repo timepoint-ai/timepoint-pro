@@ -63,9 +63,9 @@ def test_scene_query_parsing():
     for query, expected_type in test_cases:
         intent = qi._parse_query_simple(query)
         print(f"  Query: '{query}' -> Type: {intent.information_type}")
-        assert intent.information_type == expected_type, (
-            f"Expected {expected_type}, got {intent.information_type}"
-        )
+        assert (
+            intent.information_type == expected_type
+        ), f"Expected {expected_type}, got {intent.information_type}"
 
     print("  ✅ Scene query parsing test PASSED")
     return True

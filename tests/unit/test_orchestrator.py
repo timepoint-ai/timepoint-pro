@@ -205,7 +205,7 @@ class TestKnowledgeSeeder:
     def test_seed_knowledge_saves_to_db(self, store, sample_spec):
         """Test that exposure events are saved to database"""
         seeder = KnowledgeSeeder(store)
-        exposure_map = seeder.seed_knowledge(sample_spec, create_exposure_events=True)
+        seeder.seed_knowledge(sample_spec, create_exposure_events=True)
 
         # Verify saved to database
         retrieved = store.get_exposure_events("james_madison")
@@ -325,7 +325,7 @@ class TestOrchestratorAgent:
     def test_orchestrate_saves_to_db(self, llm_client, store):
         """Test that orchestration saves to database"""
         orchestrator = OrchestratorAgent(llm_client, store)
-        result = orchestrator.orchestrate("simulate a test event", save_to_db=True)
+        orchestrator.orchestrate("simulate a test event", save_to_db=True)
 
         # Verify entities saved
         entities = store.get_all_entities()

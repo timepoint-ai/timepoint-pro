@@ -37,9 +37,7 @@ def create_minimal_config() -> SimulationConfig:
             mode=TemporalMode.FORWARD,
         ),
         entities=EntityConfig(count=3, allow_animistic=False),
-        timepoints=CompanyConfig(
-            count=2  # Minimal for speed
-        ),
+        timepoints=CompanyConfig(count=2),  # Minimal for speed
         metadata={},
     )
 

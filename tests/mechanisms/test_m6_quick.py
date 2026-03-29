@@ -102,7 +102,7 @@ def test_m6_tensor_compression():
 
         # This should trigger M6 mechanism via @track_mechanism decorator
         compressed_pca = TensorCompressor.compress(context_array, "pca", n_components=4)
-        compressed_svd = TensorCompressor.compress(context_array, "svd", n_components=4)
+        TensorCompressor.compress(context_array, "svd", n_components=4)
 
         # Check if compression worked
         assert compressed_pca is not None and len(compressed_pca) > 0, "PCA compression failed"

@@ -121,12 +121,16 @@ class BatchResponse:
             batch_id=data["batch_id"],
             status=data["status"],
             created_at=datetime.fromisoformat(data["created_at"].replace("Z", "+00:00")),
-            started_at=datetime.fromisoformat(data["started_at"].replace("Z", "+00:00"))
-            if data.get("started_at")
-            else None,
-            completed_at=datetime.fromisoformat(data["completed_at"].replace("Z", "+00:00"))
-            if data.get("completed_at")
-            else None,
+            started_at=(
+                datetime.fromisoformat(data["started_at"].replace("Z", "+00:00"))
+                if data.get("started_at")
+                else None
+            ),
+            completed_at=(
+                datetime.fromisoformat(data["completed_at"].replace("Z", "+00:00"))
+                if data.get("completed_at")
+                else None
+            ),
             priority=data.get("priority", "normal"),
             fail_fast=data.get("fail_fast", False),
             progress=progress,

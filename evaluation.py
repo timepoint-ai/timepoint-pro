@@ -23,7 +23,7 @@ class EvaluationMetrics:
     def temporal_coherence_score(self, entity: Entity, timeline: list[datetime]) -> float:
         """Measure consistency across timepoints"""
         violations = 0
-        for i in range(len(timeline) - 1):
+        for _i in range(len(timeline) - 1):
             context = {"previous_personality": entity.entity_metadata.get("personality_traits", [])}
             result = validate_behavioral_inertia(entity, context)
             if not result["valid"]:

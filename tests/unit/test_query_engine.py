@@ -56,7 +56,7 @@ class TestEnhancedQueryEngine:
         engine = EnhancedQueryEngine(enable_cache=True)
 
         queries = ["Query 1", "Query 2", "Query 1"]  # Query 1 repeated
-        results = engine.execute_batch(queries)
+        engine.execute_batch(queries)
 
         stats = engine.get_batch_stats()
         assert stats["queries_executed"] == 3

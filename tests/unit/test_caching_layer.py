@@ -180,4 +180,4 @@ class TestCachingLayer:
             print("✅ All cache keys are unique")
         else:
             print("❌ Some cache keys are identical")
-            assert False, "Cache keys should be unique"
+            raise AssertionError("Cache keys should be unique")

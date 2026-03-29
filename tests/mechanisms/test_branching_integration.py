@@ -61,18 +61,16 @@ def test_counterfactual_parsing():
     print(f"  Context entities: {intent.context_entities}")
 
     # Verify parsing worked
-    assert intent.is_counterfactual == True, (
-        f"Should be counterfactual, got {intent.is_counterfactual}"
-    )
-    assert intent.information_type == "counterfactual", (
-        f"Should be counterfactual type, got {intent.information_type}"
-    )
-    assert intent.intervention_type == "entity_removal", (
-        f"Should detect entity removal, got {intent.intervention_type}"
-    )
-    assert intent.intervention_target == "alexander_hamilton", (
-        f"Should target Hamilton, got {intent.intervention_target}"
-    )
+    assert intent.is_counterfactual, f"Should be counterfactual, got {intent.is_counterfactual}"
+    assert (
+        intent.information_type == "counterfactual"
+    ), f"Should be counterfactual type, got {intent.information_type}"
+    assert (
+        intent.intervention_type == "entity_removal"
+    ), f"Should detect entity removal, got {intent.intervention_type}"
+    assert (
+        intent.intervention_target == "alexander_hamilton"
+    ), f"Should target Hamilton, got {intent.intervention_target}"
 
     print("✅ Counterfactual parsing test passed!")
 

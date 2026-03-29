@@ -309,7 +309,9 @@ class MetadataManager:
         for col_name, col_type in v2_columns.items():
             if col_name not in columns:
                 print(f"📝 Migrating database v1→v2: Adding '{col_name}' column...")
-                cursor.execute(f"ALTER TABLE runs ADD COLUMN {col_name} {col_type}")  # nosec B608 - col_name/col_type from hardcoded dict
+                cursor.execute(
+                    f"ALTER TABLE runs ADD COLUMN {col_name} {col_type}"
+                )  # nosec B608 - col_name/col_type from hardcoded dict
                 conn.commit()
                 print(f"   ✓ {col_name} column added")
 
@@ -326,7 +328,9 @@ class MetadataManager:
                 print(
                     f"📝 Migrating database: Adding '{col_name}' column (Phase 7 tensor resolution)..."
                 )
-                cursor.execute(f"ALTER TABLE runs ADD COLUMN {col_name} {col_type}")  # nosec B608 - col_name/col_type from hardcoded dict
+                cursor.execute(
+                    f"ALTER TABLE runs ADD COLUMN {col_name} {col_type}"
+                )  # nosec B608 - col_name/col_type from hardcoded dict
                 conn.commit()
                 print(f"   ✓ {col_name} column added")
 
@@ -672,9 +676,11 @@ class MetadataManager:
                     metadata.template_id,
                     metadata.started_at.isoformat(),
                     metadata.completed_at.isoformat() if metadata.completed_at else None,
-                    metadata.causal_mode.value
-                    if hasattr(metadata.causal_mode, "value")
-                    else str(metadata.causal_mode),
+                    (
+                        metadata.causal_mode.value
+                        if hasattr(metadata.causal_mode, "value")
+                        else str(metadata.causal_mode)
+                    ),
                     metadata.max_entities,
                     metadata.max_timepoints,
                     metadata.entities_created,
@@ -689,13 +695,17 @@ class MetadataManager:
                     metadata.status,
                     metadata.error_message,
                     metadata.summary,
-                    metadata.summary_generated_at.isoformat()
-                    if metadata.summary_generated_at
-                    else None,
+                    (
+                        metadata.summary_generated_at.isoformat()
+                        if metadata.summary_generated_at
+                        else None
+                    ),
                     json.dumps(metadata.narrative_exports) if metadata.narrative_exports else None,
-                    metadata.narrative_export_generated_at.isoformat()
-                    if metadata.narrative_export_generated_at
-                    else None,
+                    (
+                        metadata.narrative_export_generated_at.isoformat()
+                        if metadata.narrative_export_generated_at
+                        else None
+                    ),
                     metadata.fidelity_strategy_json,
                     metadata.fidelity_distribution,
                     metadata.actual_tokens_used,
@@ -729,9 +739,11 @@ class MetadataManager:
                     metadata.template_id,
                     metadata.started_at.isoformat(),
                     metadata.completed_at.isoformat() if metadata.completed_at else None,
-                    metadata.causal_mode.value
-                    if hasattr(metadata.causal_mode, "value")
-                    else str(metadata.causal_mode),
+                    (
+                        metadata.causal_mode.value
+                        if hasattr(metadata.causal_mode, "value")
+                        else str(metadata.causal_mode)
+                    ),
                     metadata.max_entities,
                     metadata.max_timepoints,
                     metadata.entities_created,
@@ -746,13 +758,17 @@ class MetadataManager:
                     metadata.status,
                     metadata.error_message,
                     metadata.summary,
-                    metadata.summary_generated_at.isoformat()
-                    if metadata.summary_generated_at
-                    else None,
+                    (
+                        metadata.summary_generated_at.isoformat()
+                        if metadata.summary_generated_at
+                        else None
+                    ),
                     json.dumps(metadata.narrative_exports) if metadata.narrative_exports else None,
-                    metadata.narrative_export_generated_at.isoformat()
-                    if metadata.narrative_export_generated_at
-                    else None,
+                    (
+                        metadata.narrative_export_generated_at.isoformat()
+                        if metadata.narrative_export_generated_at
+                        else None
+                    ),
                     metadata.fidelity_strategy_json,
                     metadata.fidelity_distribution,
                     metadata.actual_tokens_used,
@@ -821,9 +837,9 @@ class MetadataManager:
             run_id=row["run_id"],
             template_id=row["template_id"],
             started_at=datetime.fromisoformat(row["started_at"]),
-            completed_at=datetime.fromisoformat(row["completed_at"])
-            if row["completed_at"]
-            else None,
+            completed_at=(
+                datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None
+            ),
             causal_mode=TemporalMode(row["causal_mode"]),
             max_entities=row["max_entities"],
             max_timepoints=row["max_timepoints"],
@@ -839,15 +855,17 @@ class MetadataManager:
             status=row["status"],
             error_message=row["error_message"],
             summary=row["summary"],
-            summary_generated_at=datetime.fromisoformat(row["summary_generated_at"])
-            if row["summary_generated_at"]
-            else None,
+            summary_generated_at=(
+                datetime.fromisoformat(row["summary_generated_at"])
+                if row["summary_generated_at"]
+                else None
+            ),
             narrative_exports=narrative_exports,
-            narrative_export_generated_at=datetime.fromisoformat(
-                row["narrative_export_generated_at"]
-            )
-            if row["narrative_export_generated_at"]
-            else None,
+            narrative_export_generated_at=(
+                datetime.fromisoformat(row["narrative_export_generated_at"])
+                if row["narrative_export_generated_at"]
+                else None
+            ),
             # M1+M17: Database v2 - Fidelity metrics
             schema_version=row["schema_version"] if row["schema_version"] else "2.0",
             fidelity_strategy_json=row["fidelity_strategy_json"],

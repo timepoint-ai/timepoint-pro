@@ -167,7 +167,7 @@ Return only valid JSON, no other text."""
     def _parse_query_simple(self, query: str) -> QueryIntent:
         """Improved rule-based parsing fallback"""
         query_lower = query.lower()
-        entities = self._get_all_entity_names()
+        self._get_all_entity_names()
         timepoints = self.store.get_all_timepoints()
 
         # Improved entity detection - handle partial names and variations
@@ -212,7 +212,7 @@ Return only valid JSON, no other text."""
             "diplomatic": ["diplomatic", "reception", "international"],
         }
 
-        for event_type, keywords in event_keywords.items():
+        for _event_type, keywords in event_keywords.items():
             if any(keyword in query_lower for keyword in keywords):
                 # Find matching timepoint
                 for tp in timepoints:
@@ -530,7 +530,7 @@ Return only valid JSON, no other text."""
                 f"Based on {entity.entity_id}'s knowledge from the temporal simulation:"
             )
 
-            for i, knowledge in enumerate(relevant_knowledge[:3]):  # Limit to 3 most relevant
+            for _i, knowledge in enumerate(relevant_knowledge[:3]):  # Limit to 3 most relevant
                 source_info = source_map.get(knowledge, ("personal experience", None))
                 source, learned_at = source_info
 
@@ -633,7 +633,7 @@ Return only valid JSON, no other text."""
                 "personal_memories",
             ]
 
-            for i, (category, value) in enumerate(zip(categories, tensor[:10])):
+            for _i, (category, value) in enumerate(zip(categories, tensor[:10], strict=False)):
                 if abs(value) > 0.3:  # Significant knowledge in this area
                     intensity = "deep" if value > 0.7 else "moderate" if value > 0.5 else "basic"
                     knowledge_items.append(
@@ -641,7 +641,7 @@ Return only valid JSON, no other text."""
                     )
 
         # Look for patterns in the tensor that might indicate specific knowledge
-        tensor_mean = np.mean(tensor)
+        np.mean(tensor)
         tensor_std = np.std(tensor)
 
         if tensor_std < 0.1:
@@ -748,7 +748,7 @@ Return only valid JSON, no other text."""
                 ],
             }
 
-            for i, (trait, value) in enumerate(zip(trait_names, tensor[:5])):
+            for _i, (trait, value) in enumerate(zip(trait_names, tensor[:5], strict=False)):
                 if value < 0.3:
                     behavior_traits.append(f"Low {trait}: {trait_descriptions[trait][0]}")
                 elif value < 0.7:
@@ -966,7 +966,7 @@ Return only valid JSON, no other text."""
 
         # Show what each entity experienced/learned
         for entity in entities_at_timepoint:
-            knowledge_state = entity.entity_metadata.get("knowledge_state", [])
+            entity.entity_metadata.get("knowledge_state", [])
             # Filter knowledge relevant to this timepoint
             timepoint_knowledge = []
             exposure_events = self.store.get_exposure_events(entity.entity_id)
@@ -1190,16 +1190,12 @@ Return only valid JSON, no other text."""
         valence_desc = (
             "positive"
             if atmosphere.emotional_valence > 0.2
-            else "negative"
-            if atmosphere.emotional_valence < -0.2
-            else "neutral"
+            else "negative" if atmosphere.emotional_valence < -0.2 else "neutral"
         )
         arousal_desc = (
             "high energy"
             if atmosphere.emotional_arousal > 0.6
-            else "moderate energy"
-            if atmosphere.emotional_arousal > 0.3
-            else "calm"
+            else "moderate energy" if atmosphere.emotional_arousal > 0.3 else "calm"
         )
 
         response_parts.append(f"• Emotional tone: {valence_desc} with {arousal_desc}")
@@ -1208,16 +1204,12 @@ Return only valid JSON, no other text."""
         tension_desc = (
             "high tension"
             if atmosphere.tension_level > 0.7
-            else "moderate tension"
-            if atmosphere.tension_level > 0.4
-            else "relaxed"
+            else "moderate tension" if atmosphere.tension_level > 0.4 else "relaxed"
         )
         formality_desc = (
             "highly formal"
             if atmosphere.formality_level > 0.8
-            else "moderately formal"
-            if atmosphere.formality_level > 0.5
-            else "informal"
+            else "moderately formal" if atmosphere.formality_level > 0.5 else "informal"
         )
 
         response_parts.append(f"• Social atmosphere: {tension_desc}, {formality_desc}")
@@ -1226,16 +1218,16 @@ Return only valid JSON, no other text."""
         cohesion_desc = (
             "strong social bonds"
             if atmosphere.social_cohesion > 0.7
-            else "moderate social cohesion"
-            if atmosphere.social_cohesion > 0.4
-            else "social divisions"
+            else (
+                "moderate social cohesion"
+                if atmosphere.social_cohesion > 0.4
+                else "social divisions"
+            )
         )
         energy_desc = (
             "energetic and lively"
             if atmosphere.energy_level > 0.7
-            else "moderate energy"
-            if atmosphere.energy_level > 0.4
-            else "subdued"
+            else "moderate energy" if atmosphere.energy_level > 0.4 else "subdued"
         )
 
         response_parts.append(f"• Group dynamics: {cohesion_desc}, overall feeling {energy_desc}")
@@ -1246,9 +1238,7 @@ Return only valid JSON, no other text."""
             light_desc = (
                 "brightly lit"
                 if environment.lighting_level > 0.8
-                else "moderately lit"
-                if environment.lighting_level > 0.5
-                else "dimly lit"
+                else "moderately lit" if environment.lighting_level > 0.5 else "dimly lit"
             )
 
             response_parts.append(f"• Physical setting: {temp_desc}, {light_desc}")
@@ -1314,11 +1304,11 @@ Return only valid JSON, no other text."""
         density_desc = (
             "very crowded"
             if crowd.density > 0.8
-            else "crowded"
-            if crowd.density > 0.6
-            else "moderately full"
-            if crowd.density > 0.4
-            else "sparse"
+            else (
+                "crowded"
+                if crowd.density > 0.6
+                else "moderately full" if crowd.density > 0.4 else "sparse"
+            )
         )
         response_parts.append(f"• Density: {density_desc} ({crowd.density:.1f})")
 
@@ -1376,9 +1366,7 @@ Return only valid JSON, no other text."""
             valence_icon = (
                 "😊"
                 if atm.emotional_valence > 0.2
-                else "😔"
-                if atm.emotional_valence < -0.2
-                else "😐"
+                else "😔" if atm.emotional_valence < -0.2 else "😐"
             )
             energy_icon = (
                 "⚡" if atm.energy_level > 0.7 else "🔋" if atm.energy_level > 0.4 else "🪫"
@@ -1742,9 +1730,11 @@ Return only valid JSON."""
                 # Default to entity removal if we can detect one
                 intervention = Intervention(
                     type="entity_removal",
-                    target=query_intent.context_entities[0]
-                    if query_intent.context_entities
-                    else "unknown_entity",
+                    target=(
+                        query_intent.context_entities[0]
+                        if query_intent.context_entities
+                        else "unknown_entity"
+                    ),
                     parameters={},
                 )
 

@@ -167,26 +167,26 @@ class TestTemporalAgent:
         agent = TemporalAgent(TemporalMode.DIRECTORIAL, {})
 
         # Rising action keywords
-        assert agent._advances_narrative_arc("conflict arises", "rising_action") == True
-        assert agent._advances_narrative_arc("tension builds", "rising_action") == True
-        assert agent._advances_narrative_arc("challenge appears", "rising_action") == True
+        assert agent._advances_narrative_arc("conflict arises", "rising_action")
+        assert agent._advances_narrative_arc("tension builds", "rising_action")
+        assert agent._advances_narrative_arc("challenge appears", "rising_action")
 
         # Non-rising action
-        assert agent._advances_narrative_arc("peaceful resolution", "rising_action") == False
-        assert agent._advances_narrative_arc("happy ending", "rising_action") == False
+        assert not agent._advances_narrative_arc("peaceful resolution", "rising_action")
+        assert not agent._advances_narrative_arc("happy ending", "rising_action")
 
     def test_closes_causal_loop(self):
         """Test causal loop closure detection"""
         agent = TemporalAgent(TemporalMode.CYCLICAL, {})
 
         # Prophecy fulfillment patterns
-        assert agent._closes_causal_loop("prophecy fulfilled", {}) == True
-        assert agent._closes_causal_loop("prediction comes true", {}) == True
-        assert agent._closes_causal_loop("destiny manifested", {}) == True
+        assert agent._closes_causal_loop("prophecy fulfilled", {})
+        assert agent._closes_causal_loop("prediction comes true", {})
+        assert agent._closes_causal_loop("destiny manifested", {})
 
         # Non-prophecy events
-        assert agent._closes_causal_loop("normal event", {}) == False
-        assert agent._closes_causal_loop("regular occurrence", {}) == False
+        assert not agent._closes_causal_loop("normal event", {})
+        assert not agent._closes_causal_loop("regular occurrence", {})
 
 
 @pytest.mark.integration
@@ -210,7 +210,7 @@ class TestTemporalModeValidation:
         result = Validator._validators["temporal_consistency"]["func"](
             entity, "normal knowledge", timepoint, "forward"
         )
-        assert result["valid"] == True
+        assert result["valid"]
         assert "Forward mode: Forward causality" in result["message"]
 
     def test_validate_temporal_consistency_cyclical_mode(self):
@@ -229,14 +229,14 @@ class TestTemporalModeValidation:
         result = Validator._validators["temporal_consistency"]["func"](
             entity, "ancient prophecy fulfilled", timepoint, "cyclical"
         )
-        assert result["valid"] == True
+        assert result["valid"]
         assert "Prophecy allowed" in result["message"]
 
         # Normal knowledge
         result = Validator._validators["temporal_consistency"]["func"](
             entity, "regular historical fact", timepoint, "cyclical"
         )
-        assert result["valid"] == True
+        assert result["valid"]
         assert "Standard causality" in result["message"]
 
     def test_validate_temporal_consistency_directorial_mode(self):
@@ -255,14 +255,14 @@ class TestTemporalModeValidation:
         result = Validator._validators["temporal_consistency"]["func"](
             entity, "dramatic turning point", timepoint, "directorial"
         )
-        assert result["valid"] == True
+        assert result["valid"]
         assert "Narrative causality" in result["message"]
 
         # Regular event
         result = Validator._validators["temporal_consistency"]["func"](
             entity, "ordinary occurrence", timepoint, "directorial"
         )
-        assert result["valid"] == True
+        assert result["valid"]
         assert "Standard causality" in result["message"]
 
     def test_validate_temporal_consistency_branching_mode(self):
@@ -280,7 +280,7 @@ class TestTemporalModeValidation:
         result = Validator._validators["temporal_consistency"]["func"](
             entity, "alternate timeline event", timepoint, "branching"
         )
-        assert result["valid"] == True
+        assert result["valid"]
         assert "Multiverse causality" in result["message"]
 
 

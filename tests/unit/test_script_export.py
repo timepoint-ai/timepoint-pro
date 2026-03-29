@@ -206,7 +206,7 @@ def test_batch_export():
 
         # Check both files were created
         fountain_path = Path(output_dir) / "test_world_script.fountain"
-        storyboard_path = Path(output_dir) / "test_world_script.storyboard"
+        Path(output_dir) / "test_world_script.storyboard"
 
         assert (
             fountain_path.exists()

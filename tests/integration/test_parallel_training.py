@@ -345,12 +345,12 @@ class TestParallelTrainerConcurrency:
         await trainer.train_batch(tensor_ids=tensor_ids, target_maturity=0.3)
 
         # Verify all tensors were trained
-        tensors_trained = set(log[1] for log in training_log)
+        tensors_trained = {log[1] for log in training_log}
         assert len(tensors_trained) == len(multiple_tensor_records), "All tensors should be trained"
 
         # Note: Multiple workers may or may not be used depending on timing
         # The key invariant is that all tensors get trained exactly once
-        workers_used = set(log[0] for log in training_log)
+        workers_used = {log[0] for log in training_log}
         assert len(workers_used) >= 1, "At least one worker should be used"
 
     async def test_no_tensor_trained_twice(self, tensor_db, multiple_tensor_records):

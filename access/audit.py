@@ -200,9 +200,11 @@ class AuditLogger:
                         event.user_id,
                         event.action,
                         1 if event.success else 0,
-                        event.timestamp.isoformat()
-                        if event.timestamp
-                        else datetime.utcnow().isoformat(),
+                        (
+                            event.timestamp.isoformat()
+                            if event.timestamp
+                            else datetime.utcnow().isoformat()
+                        ),
                         json.dumps(event.metadata) if event.metadata else None,
                     ),
                 )

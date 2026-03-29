@@ -15,9 +15,9 @@ class KnowledgeFlowFormatter:
         """Convert simulation into knowledge flow Q&A examples"""
         training_examples = []
 
-        entities = simulation_result.get("entities", [])
+        simulation_result.get("entities", [])
         timepoints = simulation_result.get("timepoints", [])
-        exposure_events = simulation_result.get("exposure_events", {})
+        simulation_result.get("exposure_events", {})
 
         # Generate various query types
         for timepoint in timepoints:
@@ -44,9 +44,11 @@ class KnowledgeFlowFormatter:
                             "entity_id": entity_id,
                             "acquisition_method": "witnessed",
                             "timepoint": timepoint.timepoint_id,
-                            "causal_chain": [timepoint.causal_parent, timepoint.timepoint_id]
-                            if timepoint.causal_parent
-                            else [timepoint.timepoint_id],
+                            "causal_chain": (
+                                [timepoint.causal_parent, timepoint.timepoint_id]
+                                if timepoint.causal_parent
+                                else [timepoint.timepoint_id]
+                            ),
                         },
                         indent=2,
                     ),

@@ -164,8 +164,8 @@ def add_markers_to_file(file_path: Path, markers: set[str], dry_run: bool = Fals
         insert_line += 1
 
     # Build marker comment
-    marker_comment = f"\n# Test markers: {', '.join(sorted(markers))}\n"
-    marker_decorators = "".join(f"@pytest.mark.{marker}\n" for marker in sorted(markers))
+    f"\n# Test markers: {', '.join(sorted(markers))}\n"
+    "".join(f"@pytest.mark.{marker}\n" for marker in sorted(markers))
 
     if dry_run:
         print(f"\n{file_path.name}:")

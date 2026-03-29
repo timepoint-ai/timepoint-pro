@@ -446,7 +446,7 @@ class TemporalAgent:
 
         for step in range(total_steps):
             position_in_cycle = step % cycle_length
-            cycle_index = step // cycle_length
+            step // cycle_length
             is_boundary = position_in_cycle == 0 or position_in_cycle == cycle_length - 1
             is_prophecy = is_boundary and prophecy_accuracy > 0.3
 
@@ -671,7 +671,7 @@ class TemporalAgent:
 
         elif self.mode == TemporalMode.CYCLICAL:
             config = context.get("cyclical_config", {})
-            cycle_length = config.get("cycle_length", 10)
+            config.get("cycle_length", 10)
             destiny_weight = config.get("destiny_weight", 0.6)
 
             # Check if event closes a temporal loop

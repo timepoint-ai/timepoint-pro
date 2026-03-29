@@ -345,7 +345,7 @@ class TestInteractiveRefiner:
         original_config = refiner.current_config
 
         # Reject and restart
-        result = refiner.reject_and_restart(reason="Want different approach")
+        refiner.reject_and_restart(reason="Want different approach")
 
         # Should restart from beginning
         assert refiner.current_config is None or refiner.current_config != original_config

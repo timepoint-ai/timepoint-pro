@@ -413,9 +413,9 @@ def _compute_information_asymmetry(
     entity_known = {}
     for eid, ctx in fourth_wall_contexts.items():
         known = ctx.front_layer.knowledge_items if hasattr(ctx, "front_layer") else []
-        entity_known[eid] = set(
+        entity_known[eid] = {
             k.get("content", "")[:60].lower() for k in known if isinstance(k, dict)
-        )
+        }
 
     # For each entity, find withheld items that no other entity knows
     for eid, withheld_items in entity_withheld.items():

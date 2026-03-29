@@ -117,9 +117,11 @@ class RunSummarizer:
             "template_id": metadata.template_id,
             "status": metadata.status,
             # Configuration
-            "causal_mode": metadata.causal_mode.value
-            if hasattr(metadata.causal_mode, "value")
-            else str(metadata.causal_mode),
+            "causal_mode": (
+                metadata.causal_mode.value
+                if hasattr(metadata.causal_mode, "value")
+                else str(metadata.causal_mode)
+            ),
             "max_entities": metadata.max_entities,
             "max_timepoints": metadata.max_timepoints,
             # Results
@@ -127,7 +129,7 @@ class RunSummarizer:
             "timepoints_created": metadata.timepoints_created,
             "training_examples": metadata.training_examples,
             # Mechanisms
-            "mechanisms_used": sorted(list(metadata.mechanisms_used)),
+            "mechanisms_used": sorted(metadata.mechanisms_used),
             "mechanism_count": len(metadata.mechanisms_used),
             # Cost & performance
             "cost_usd": metadata.cost_usd,
@@ -135,16 +137,18 @@ class RunSummarizer:
             "llm_calls": metadata.llm_calls,
             "tokens_used": metadata.tokens_used,
             # Validations (if available)
-            "validations_passed": sum(1 for v in metadata.validations if v.passed)
-            if metadata.validations
-            else 0,
-            "validations_failed": sum(1 for v in metadata.validations if not v.passed)
-            if metadata.validations
-            else 0,
+            "validations_passed": (
+                sum(1 for v in metadata.validations if v.passed) if metadata.validations else 0
+            ),
+            "validations_failed": (
+                sum(1 for v in metadata.validations if not v.passed) if metadata.validations else 0
+            ),
             # Resolution diversity (if available)
-            "resolution_diversity": len(set(r.resolution for r in metadata.resolution_assignments))
-            if metadata.resolution_assignments
-            else 0,
+            "resolution_diversity": (
+                len({r.resolution for r in metadata.resolution_assignments})
+                if metadata.resolution_assignments
+                else 0
+            ),
             # Training data sample
             "training_data_sample": training_data[:3] if training_data else None,
             # Error info

@@ -291,9 +291,9 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
                 "concurrent_jobs": config.get_concurrent_jobs_for_tier(tier),
             },
             "retry_after": getattr(exc, "retry_after", 60),
-            "upgrade_info": "Contact support to upgrade your rate limit tier."
-            if tier == "free"
-            else None,
+            "upgrade_info": (
+                "Contact support to upgrade your rate limit tier." if tier == "free" else None
+            ),
         },
         headers={
             "Retry-After": str(getattr(exc, "retry_after", 60)),

@@ -121,7 +121,7 @@ class ParallelTensorTrainer:
 
         # Spawn workers
         worker_tasks = []
-        for i in range(num_workers):
+        for _i in range(num_workers):
             worker_id = f"worker-{uuid.uuid4().hex[:8]}"
             task = asyncio.create_task(
                 self._worker_loop(
@@ -309,7 +309,7 @@ class ParallelTensorTrainer:
 
         Workers will stop after completing their current job.
         """
-        for worker_id, task in self._active_workers.items():
+        for _worker_id, task in self._active_workers.items():
             task.cancel()
         self._active_workers.clear()
 

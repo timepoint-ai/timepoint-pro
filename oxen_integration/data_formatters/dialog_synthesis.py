@@ -102,19 +102,27 @@ class DialogSynthesisFormatter:
                 "resolution_level": str(entity_a.resolution_level),
                 "knowledge": list(entity_a_knowledge),
                 "unique_knowledge": list(a_unique),
-                "emotional_state": {
-                    "valence": entity_a.cognitive_tensor.emotional_valence
+                "emotional_state": (
+                    {
+                        "valence": (
+                            entity_a.cognitive_tensor.emotional_valence
+                            if hasattr(entity_a, "cognitive_tensor")
+                            else 0.0
+                        ),
+                        "arousal": (
+                            entity_a.cognitive_tensor.emotional_arousal
+                            if hasattr(entity_a, "cognitive_tensor")
+                            else 0.0
+                        ),
+                    }
                     if hasattr(entity_a, "cognitive_tensor")
-                    else 0.0,
-                    "arousal": entity_a.cognitive_tensor.emotional_arousal
+                    else {"valence": 0.0, "arousal": 0.0}
+                ),
+                "energy": (
+                    entity_a.cognitive_tensor.energy_budget
                     if hasattr(entity_a, "cognitive_tensor")
-                    else 0.0,
-                }
-                if hasattr(entity_a, "cognitive_tensor")
-                else {"valence": 0.0, "arousal": 0.0},
-                "energy": entity_a.cognitive_tensor.energy_budget
-                if hasattr(entity_a, "cognitive_tensor")
-                else 100.0,
+                    else 100.0
+                ),
             },
             "entity_b": {
                 "entity_id": entity_b.entity_id,
@@ -122,19 +130,27 @@ class DialogSynthesisFormatter:
                 "resolution_level": str(entity_b.resolution_level),
                 "knowledge": list(entity_b_knowledge),
                 "unique_knowledge": list(b_unique),
-                "emotional_state": {
-                    "valence": entity_b.cognitive_tensor.emotional_valence
+                "emotional_state": (
+                    {
+                        "valence": (
+                            entity_b.cognitive_tensor.emotional_valence
+                            if hasattr(entity_b, "cognitive_tensor")
+                            else 0.0
+                        ),
+                        "arousal": (
+                            entity_b.cognitive_tensor.emotional_arousal
+                            if hasattr(entity_b, "cognitive_tensor")
+                            else 0.0
+                        ),
+                    }
                     if hasattr(entity_b, "cognitive_tensor")
-                    else 0.0,
-                    "arousal": entity_b.cognitive_tensor.emotional_arousal
+                    else {"valence": 0.0, "arousal": 0.0}
+                ),
+                "energy": (
+                    entity_b.cognitive_tensor.energy_budget
                     if hasattr(entity_b, "cognitive_tensor")
-                    else 0.0,
-                }
-                if hasattr(entity_b, "cognitive_tensor")
-                else {"valence": 0.0, "arousal": 0.0},
-                "energy": entity_b.cognitive_tensor.energy_budget
-                if hasattr(entity_b, "cognitive_tensor")
-                else 100.0,
+                    else 100.0
+                ),
             },
             "relationship": {"type": relationship_type, "weight": relationship_weight},
             "shared_knowledge": list(shared),
@@ -188,18 +204,22 @@ Generate a dialog with 3-5 turns."""
                         {
                             "speaker": entity_a.entity_id,
                             "content": f"[Dialog about {timepoint.event_description}, referencing {list(a_unique)[:1] if a_unique else 'shared knowledge'}]",
-                            "emotional_tone": "positive"
-                            if context["entity_a"]["emotional_state"]["valence"] > 0
-                            else "neutral",
+                            "emotional_tone": (
+                                "positive"
+                                if context["entity_a"]["emotional_state"]["valence"] > 0
+                                else "neutral"
+                            ),
                             "knowledge_references": list(shared)[:2] if shared else [],
                             "energy_cost": 2.0,
                         },
                         {
                             "speaker": entity_b.entity_id,
                             "content": f"[Response incorporating {list(b_unique)[:1] if b_unique else 'shared knowledge'}]",
-                            "emotional_tone": "positive"
-                            if context["entity_b"]["emotional_state"]["valence"] > 0
-                            else "neutral",
+                            "emotional_tone": (
+                                "positive"
+                                if context["entity_b"]["emotional_state"]["valence"] > 0
+                                else "neutral"
+                            ),
                             "knowledge_references": list(shared)[:2] if shared else [],
                             "energy_cost": 2.0,
                         },

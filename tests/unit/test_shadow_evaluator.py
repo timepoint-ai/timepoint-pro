@@ -29,15 +29,15 @@ def make_evaluator(run_id: str = "test_run") -> ShadowEvaluator:
 
 
 def make_simple_envelope(**overrides) -> ADPRSEnvelope:
-    defaults = dict(
-        A=1.0,
-        D=1000.0,
-        P=1.0,
-        R=0,
-        S=1.0,
-        t0="2025-01-01T00:00:00+00:00",
-        baseline=0.0,
-    )
+    defaults = {
+        "A": 1.0,
+        "D": 1000.0,
+        "P": 1.0,
+        "R": 0,
+        "S": 1.0,
+        "t0": "2025-01-01T00:00:00+00:00",
+        "baseline": 0.0,
+    }
     defaults.update(overrides)
     return ADPRSEnvelope(**defaults)
 

@@ -68,17 +68,17 @@ def test_baseline_tensor_creation():
     assert len(behavior) == 8, f"Behavior should have 8 dims, got {len(behavior)}"
 
     # Baseline tensors are marked as 0.0 maturity to indicate they need training
-    assert entity.tensor_maturity == 0.0, (
-        f"Baseline tensor should be marked 0.0, got {entity.tensor_maturity}"
-    )
-    assert entity.tensor_training_cycles == 0, (
-        f"Training cycles should be 0, got {entity.tensor_training_cycles}"
-    )
+    assert (
+        entity.tensor_maturity == 0.0
+    ), f"Baseline tensor should be marked 0.0, got {entity.tensor_maturity}"
+    assert (
+        entity.tensor_training_cycles == 0
+    ), f"Training cycles should be 0, got {entity.tensor_training_cycles}"
 
     # But the calculated maturity should be reasonable (structure is present)
-    assert calculated_maturity < 0.95, (
-        f"Calculated maturity should be < 0.95 operational threshold, got {calculated_maturity}"
-    )
+    assert (
+        calculated_maturity < 0.95
+    ), f"Calculated maturity should be < 0.95 operational threshold, got {calculated_maturity}"
 
     print("  ✅ Baseline tensor creation test PASSED")
     return True
@@ -128,11 +128,7 @@ def test_optional_prospection_triggering():
     high_prospection_entity = Entity(
         entity_id="sherlock",
         entity_type="human",
-        entity_metadata={
-            "cognitive_traits": {
-                "prospection_ability": 0.95  # High ability
-            }
-        },
+        entity_metadata={"cognitive_traits": {"prospection_ability": 0.95}},  # High ability
     )
     timepoint = Timepoint(
         timepoint_id="tp1",
@@ -143,23 +139,21 @@ def test_optional_prospection_triggering():
 
     should_trigger = should_trigger_prospection(high_prospection_entity, timepoint, config)
     print(f"  High prospection_ability (0.95): {should_trigger} (expected: True)")
-    assert should_trigger == True, "High prospection_ability should trigger"
+    assert should_trigger, "High prospection_ability should trigger"
 
     # Test 2: Entity with low prospection_ability should NOT trigger
     low_prospection_entity = Entity(
         entity_id="watson",
         entity_type="human",
         entity_metadata={
-            "cognitive_traits": {
-                "prospection_ability": 0.3  # Low ability
-            },
+            "cognitive_traits": {"prospection_ability": 0.3},  # Low ability
             "role": "doctor",  # Not a planning role
         },
     )
 
     should_not_trigger = should_trigger_prospection(low_prospection_entity, timepoint, config)
     print(f"  Low prospection_ability (0.3): {should_not_trigger} (expected: False)")
-    assert should_not_trigger == False, "Low prospection_ability should NOT trigger"
+    assert not should_not_trigger, "Low prospection_ability should NOT trigger"
 
     # Test 3: Planning role should trigger
     detective_entity = Entity(
@@ -173,7 +167,7 @@ def test_optional_prospection_triggering():
 
     should_trigger_role = should_trigger_prospection(detective_entity, timepoint, config)
     print(f"  Planning role (detective): {should_trigger_role} (expected: True)")
-    assert should_trigger_role == True, "Detective role should trigger prospection"
+    assert should_trigger_role, "Detective role should trigger prospection"
 
     # Test 4: Template config should trigger
     config_entity = Entity(entity_id="moriarty", entity_type="human", entity_metadata={})
@@ -183,7 +177,7 @@ def test_optional_prospection_triggering():
         config_entity, timepoint, config_with_prospection
     )
     print(f"  Template config (modeling_entity): {should_trigger_config} (expected: True)")
-    assert should_trigger_config == True, "Template config should trigger prospection"
+    assert should_trigger_config, "Template config should trigger prospection"
 
     # Test 5: High-stakes event + moderate ability should trigger
     event_timepoint = Timepoint(
@@ -194,16 +188,12 @@ def test_optional_prospection_triggering():
     moderate_entity = Entity(
         entity_id="entity",
         entity_type="human",
-        entity_metadata={
-            "cognitive_traits": {
-                "prospection_ability": 0.5  # Moderate ability
-            }
-        },
+        entity_metadata={"cognitive_traits": {"prospection_ability": 0.5}},  # Moderate ability
     )
 
     should_trigger_event = should_trigger_prospection(moderate_entity, event_timepoint, {})
     print(f"  High-stakes event + moderate ability: {should_trigger_event} (expected: True)")
-    assert should_trigger_event == True, "High-stakes event should trigger prospection"
+    assert should_trigger_event, "High-stakes event should trigger prospection"
 
     print("  ✅ Optional prospection triggering test PASSED")
     return True
@@ -264,16 +254,16 @@ def test_fallback_tensor():
     import numpy as np
 
     # Context should be small values around 0.1 (0.05-0.15 range)
-    assert np.all(context >= 0.05) and np.all(context <= 0.15), (
-        f"Fallback context should be in [0.05, 0.15], got [{context.min()}, {context.max()}]"
-    )
+    assert np.all(context >= 0.05) and np.all(
+        context <= 0.15
+    ), f"Fallback context should be in [0.05, 0.15], got [{context.min()}, {context.max()}]"
     # Biology and behavior should be around 0.5 (0.5-0.6 range)
-    assert np.all(biology >= 0.5) and np.all(biology <= 0.6), (
-        f"Fallback biology should be in [0.5, 0.6], got [{biology.min()}, {biology.max()}]"
-    )
-    assert np.all(behavior >= 0.5) and np.all(behavior <= 0.6), (
-        f"Fallback behavior should be in [0.5, 0.6], got [{behavior.min()}, {behavior.max()}]"
-    )
+    assert np.all(biology >= 0.5) and np.all(
+        biology <= 0.6
+    ), f"Fallback biology should be in [0.5, 0.6], got [{biology.min()}, {biology.max()}]"
+    assert np.all(behavior >= 0.5) and np.all(
+        behavior <= 0.6
+    ), f"Fallback behavior should be in [0.5, 0.6], got [{behavior.min()}, {behavior.max()}]"
 
     print("  ✅ Fallback tensor creation test PASSED")
     return True

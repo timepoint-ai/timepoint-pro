@@ -355,7 +355,7 @@ class TestIntegrationScenarios:
         bridge.record_simulation(run_id=run_id, success=True, cost_usd=0.05, tokens=1000)
 
         # 4. Get usage (may be None if DB not configured)
-        usage = bridge.get_usage()
+        bridge.get_usage()
         # Just verify no exception raised
 
     @pytest.mark.integration

@@ -358,7 +358,7 @@ class TestMultiUserAccessScenarios:
         # Attempt to read should fail
         try:
             enforcer.enforce(shared_user, tensor_id, "read")
-            assert False, "Should have raised PermissionDenied"
+            raise AssertionError("Should have raised PermissionDenied")
         except PermissionDenied:
             logger.log_access(tensor_id, shared_user, "read", False)
 

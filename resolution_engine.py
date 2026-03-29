@@ -155,7 +155,6 @@ class ResolutionEngine:
 
     def get_resolution_stats(self) -> dict[str, int]:
         """Get statistics on current resolution distribution"""
-        entities = []  # We'd need to get all entities from store
 
         # This is a placeholder - in real implementation, we'd query all entities
         stats = {

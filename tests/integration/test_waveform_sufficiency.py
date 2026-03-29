@@ -334,7 +334,7 @@ class TestMultiEntitySufficiency:
 
     def test_per_entity_wsr_reasonable(self):
         """Each entity should individually have WSR > 0.5 at minimum."""
-        rng = np.random.default_rng(3003)
+        np.random.default_rng(3003)
         n_points = 20
 
         entities = {
@@ -419,9 +419,9 @@ class TestHarmonicImprovesWSR:
             epsilon=0.1,
         )
 
-        assert result_k3["wsr"] >= result_k1["wsr"], (
-            f"K=3 WSR ({result_k3['wsr']:.3f}) should be >= K=1 WSR ({result_k1['wsr']:.3f})"
-        )
+        assert (
+            result_k3["wsr"] >= result_k1["wsr"]
+        ), f"K=3 WSR ({result_k3['wsr']:.3f}) should be >= K=1 WSR ({result_k1['wsr']:.3f})"
 
     def test_k3_residual_lower_than_k1(self):
         """K=3 fit residual on multi-harmonic data should be <= K=1 residual."""

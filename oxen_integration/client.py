@@ -250,7 +250,7 @@ class OxenClient:
 
                 # Repo doesn't exist - create it if allowed
                 if create_repo_if_missing:
-                    repo_info = self.create_repo()
+                    self.create_repo()
                     # remote_repo is now set by create_repo()
                 else:
                     raise UploadError(

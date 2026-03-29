@@ -94,11 +94,11 @@ class TestSprint1Integration:
         tracker.start()
 
         # Simulate generation progress
-        for i in range(10):
+        for _i in range(10):
             tracker.update_entity_generated()
             tracker.update_tokens(500)
 
-        for i in range(5):
+        for _i in range(5):
             tracker.update_timepoint_generated()
             tracker.update_tokens(1000)
 
@@ -350,12 +350,12 @@ class TestSprint1Acceptance:
         tracker.start()
 
         # Simulate 10 entity generations
-        for i in range(10):
+        for _i in range(10):
             tracker.update_entity_generated()
             tracker.update_tokens(1000)
 
         # Simulate 10 timepoint generations
-        for i in range(10):
+        for _i in range(10):
             tracker.update_timepoint_generated()
             tracker.update_tokens(500)
 

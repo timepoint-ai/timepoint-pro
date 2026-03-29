@@ -40,9 +40,7 @@ def create_query_evolution_config() -> SimulationConfig:
             count=4,  # 4 professors
             allow_animistic=False,
         ),
-        timepoints=CompanyConfig(
-            count=3  # 3 meeting stages
-        ),
+        timepoints=CompanyConfig(count=3),  # 3 meeting stages
         metadata={},
     )
 

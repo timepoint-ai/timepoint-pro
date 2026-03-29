@@ -85,9 +85,9 @@ class TestAdprsWaveform:
                 for S in [0.0, 0.5, 1.0]:
                     for bl in [0.0, 0.5, 1.0]:
                         result = adprs_waveform(tau, A, P, S, bl)
-                        assert np.all(result >= 0.0) and np.all(result <= 1.0), (
-                            f"Out of range for A={A}, P={P}, S={S}, bl={bl}"
-                        )
+                        assert np.all(result >= 0.0) and np.all(
+                            result <= 1.0
+                        ), f"Out of range for A={A}, P={P}, S={S}, bl={bl}"
 
     def test_matches_envelope_evaluate(self):
         """Waveform must match ADPRSEnvelope.evaluate() at sampled tau points."""
@@ -105,9 +105,9 @@ class TestAdprsWaveform:
             waveform_phi = float(
                 adprs_waveform(np.array([tau_val]), env.A, env.P, env.S, env.baseline)[0]
             )
-            assert abs(env_phi - waveform_phi) < 1e-6, (
-                f"Mismatch at tau={tau_val}: envelope={env_phi}, waveform={waveform_phi}"
-            )
+            assert (
+                abs(env_phi - waveform_phi) < 1e-6
+            ), f"Mismatch at tau={tau_val}: envelope={env_phi}, waveform={waveform_phi}"
 
 
 # --- Cold fit ---

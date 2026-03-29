@@ -746,9 +746,9 @@ Provide:
                 path_id=f"cyclical_path_{uuid.uuid4().hex[:8]}",
                 states=all_states,
                 coherence_score=0.0,
-                cycle_semantics=self.cycle_semantics.cycle_type
-                if self.cycle_semantics
-                else "spiral",
+                cycle_semantics=(
+                    self.cycle_semantics.cycle_type if self.cycle_semantics else "spiral"
+                ),
                 cycle_type=self.cycle_semantics.cycle_type if self.cycle_semantics else "spiral",
                 cycle_count=self.loop_count,
             )

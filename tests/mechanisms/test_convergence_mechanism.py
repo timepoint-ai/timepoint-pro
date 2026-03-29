@@ -361,9 +361,9 @@ class TestRobustnessGrades:
             contested_edges=set(),
         )
 
-        assert result.robustness_grade == expected_grade, (
-            f"Score {score} should get grade {expected_grade}, got {result.robustness_grade}"
-        )
+        assert (
+            result.robustness_grade == expected_grade
+        ), f"Score {score} should get grade {expected_grade}, got {result.robustness_grade}"
 
 
 class TestConvergenceResultSerialization:

@@ -104,9 +104,11 @@ def create_animistic_entity(
                 "stress": np.random.uniform(0.0, 0.3),
             },
             training_level=biological_defaults.get("animal_training", 0.5),
-            goals=["avoid_pain", "seek_food", "trust_handler"]
-            if species in ["dog", "horse"]
-            else ["avoid_pain", "seek_food"],
+            goals=(
+                ["avoid_pain", "seek_food", "trust_handler"]
+                if species in ["dog", "horse"]
+                else ["avoid_pain", "seek_food"]
+            ),
             sensory_capabilities={
                 "vision": 0.8 if species == "eagle" else 0.6,
                 "hearing": 0.9 if species in ["dog", "horse"] else 0.5,

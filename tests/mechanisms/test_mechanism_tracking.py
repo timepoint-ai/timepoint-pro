@@ -65,9 +65,9 @@ def test_mechanism_tracking_jefferson_dinner():
     print(full_df.to_string(index=False))
 
     # Assert mechanisms were tracked
-    assert len(result_metadata.mechanisms_used) > 0, (
-        "No mechanisms were tracked. Check if decorators are properly applied and run_id is set"
-    )
+    assert (
+        len(result_metadata.mechanisms_used) > 0
+    ), "No mechanisms were tracked. Check if decorators are properly applied and run_id is set"
 
     print()
     print("✅ SUCCESS: Mechanism tracking is working!")

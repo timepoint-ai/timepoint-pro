@@ -275,7 +275,7 @@ def _compute_tactic_evolution_score(
         return 0.0
 
     entity_scores = []
-    for eid, arc in character_arcs.items():
+    for _eid, arc in character_arcs.items():
         attempts = arc.get("dialog_attempts", [])
         if len(attempts) < 2:
             continue

@@ -65,9 +65,9 @@ def test_anxiety_calculation():
 
     # Assertions
     assert low_anxiety < 0.3, f"Low-risk expectations should have low anxiety, got {low_anxiety}"
-    assert high_anxiety > 0.4, (
-        f"High-risk expectations should have high anxiety, got {high_anxiety}"
-    )
+    assert (
+        high_anxiety > 0.4
+    ), f"High-risk expectations should have high anxiety, got {high_anxiety}"
     assert high_anxiety > low_anxiety, "High-risk should have more anxiety than low-risk"
 
     print("✅ Anxiety calculation tests passed!")
@@ -142,12 +142,12 @@ def test_prospective_state_generation():
 
     # Assertions
     assert len(prospective_state.expectations) > 0, "Should generate expectations"
-    assert 0 <= prospective_state.anxiety_level <= 1, (
-        f"Anxiety should be 0-1, got {prospective_state.anxiety_level}"
-    )
-    assert prospective_state.prospective_id.startswith("prospect_washington"), (
-        f"ID should start with prospect_washington, got {prospective_state.prospective_id}"
-    )
+    assert (
+        0 <= prospective_state.anxiety_level <= 1
+    ), f"Anxiety should be 0-1, got {prospective_state.anxiety_level}"
+    assert prospective_state.prospective_id.startswith(
+        "prospect_washington"
+    ), f"ID should start with prospect_washington, got {prospective_state.prospective_id}"
 
     print("✅ Prospective state generation tests passed!")
 

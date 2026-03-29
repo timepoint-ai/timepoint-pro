@@ -283,7 +283,7 @@ class TestErrorSummary:
             raise Exception("Test error")
 
         # Generate 20 errors
-        for i in range(20):
+        for _i in range(20):
             handler.with_retry(failing_func, fallback_value=None)
 
         summary = handler.get_error_summary()

@@ -223,7 +223,6 @@ def validate_causal_chain_integrity(timepoints: list[Timepoint]) -> dict[str, An
                 )
 
     # Check for cycles (simplified - more complex cycle detection could be added)
-    visited = set()
     for tp in timepoints:
         current = tp
         chain = []

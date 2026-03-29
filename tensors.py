@@ -207,12 +207,16 @@ def generate_ttm_tensor(entity: Entity) -> str | None:
             physical_data.get("fever", 36.5) / 45.0,  # Normalize fever ~36-42°C
             physical_data.get("mobility", 1.0),
             physical_data.get("stamina", 1.0),
-            physical_data.get("sensory_acuity", {}).get("vision", 1.0)
-            if isinstance(physical_data.get("sensory_acuity"), dict)
-            else 1.0,
-            physical_data.get("sensory_acuity", {}).get("hearing", 1.0)
-            if isinstance(physical_data.get("sensory_acuity"), dict)
-            else 1.0,
+            (
+                physical_data.get("sensory_acuity", {}).get("vision", 1.0)
+                if isinstance(physical_data.get("sensory_acuity"), dict)
+                else 1.0
+            ),
+            (
+                physical_data.get("sensory_acuity", {}).get("hearing", 1.0)
+                if isinstance(physical_data.get("sensory_acuity"), dict)
+                else 1.0
+            ),
             0.0,  # Reserved
             0.0,  # Reserved
         ]

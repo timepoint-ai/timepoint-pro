@@ -45,9 +45,7 @@ def create_alternate_history_config() -> SimulationConfig:
             count=3,  # 3 executives
             allow_animistic=False,
         ),
-        timepoints=CompanyConfig(
-            count=3  # 3 meeting stages with decision at timepoint 2
-        ),
+        timepoints=CompanyConfig(count=3),  # 3 meeting stages with decision at timepoint 2
         metadata={},
     )
 

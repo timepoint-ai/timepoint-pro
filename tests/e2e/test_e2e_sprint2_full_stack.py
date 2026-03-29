@@ -371,7 +371,7 @@ class TestEndToEndWorkflow:
         pipeline = ExportPipeline(engine)
 
         # First batch export
-        results1 = pipeline.export_batch(
+        pipeline.export_batch(
             world_id="cache_test",
             report_types=["summary", "relationships"],
             export_formats=["json"],
@@ -379,7 +379,7 @@ class TestEndToEndWorkflow:
         )
 
         # Second batch export (should benefit from cache)
-        results2 = pipeline.export_batch(
+        pipeline.export_batch(
             world_id="cache_test",
             report_types=["summary", "relationships"],
             export_formats=["json"],

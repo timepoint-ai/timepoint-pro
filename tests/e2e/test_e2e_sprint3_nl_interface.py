@@ -216,7 +216,7 @@ class TestE2EInteractiveRefinement:
         first_config = refiner.current_config
 
         # Reject and restart
-        result = refiner.reject_and_restart(reason="Want different scenario")
+        refiner.reject_and_restart(reason="Want different scenario")
 
         # Config should be cleared
         assert refiner.current_config is None or refiner.current_config != first_config
@@ -290,7 +290,7 @@ class TestE2EClarificationEngine:
 
         # Should detect it's historical
         # Check if start_time clarification is present
-        fields = [c.field for c in clarifications]
+        [c.field for c in clarifications]
 
         # Historical scenarios should ask for start_time
         # (though it might not if "Apollo 13" isn't recognized - check the keyword list)

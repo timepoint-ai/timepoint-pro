@@ -48,7 +48,7 @@ class TestPhase3DialogSynthesis:
 
     def setup_method(self):
         """Set up test fixtures with REAL implementations"""
-        config = load_config()
+        load_config()
 
         # Use REAL GraphStore
         self.store = GraphStore("sqlite:///:memory:")
@@ -205,7 +205,7 @@ class TestPhase3MultiEntityAnalysis:
 
     def setup_method(self):
         """Set up test fixtures with REAL implementations"""
-        config = load_config()
+        load_config()
 
         # Use REAL GraphStore
         self.store = GraphStore("sqlite:///:memory:")
@@ -305,7 +305,7 @@ class TestPhase3Integration:
 
     def setup_method(self):
         """Set up test fixtures with REAL implementations"""
-        config = load_config()
+        load_config()
 
         # Use REAL GraphStore
         self.store = GraphStore("sqlite:///:memory:")
@@ -411,7 +411,7 @@ class TestPhase3Validators:
     def test_dialog_realism_validator(self):
         """Test dialog realism validation"""
         # This should pass with healthy entities
-        result = Validator.validate_all(self.entities[0], {"dialog_data": self.dialog_data})
+        Validator.validate_all(self.entities[0], {"dialog_data": self.dialog_data})
         # Note: This would need proper integration with the validator system
 
     def test_knowledge_consistency_validator(self):
@@ -441,18 +441,18 @@ if __name__ == "__main__":
 
     coupled = couple_pain_to_cognition(physical, cognitive)
     assert coupled.energy_budget < cognitive.energy_budget, "Pain should reduce energy"
-    assert coupled.emotional_valence < cognitive.emotional_valence, (
-        "Pain should reduce emotional valence"
-    )
+    assert (
+        coupled.emotional_valence < cognitive.emotional_valence
+    ), "Pain should reduce emotional valence"
 
     print("✅ Body-mind coupling works correctly")
 
     # Test illness coupling
     physical_sick = PhysicalTensor(fever=39.5)
     coupled_sick = couple_illness_to_cognition(physical_sick, cognitive)
-    assert coupled_sick.decision_confidence < cognitive.decision_confidence, (
-        "Fever should reduce confidence"
-    )
+    assert (
+        coupled_sick.decision_confidence < cognitive.decision_confidence
+    ), "Fever should reduce confidence"
 
     print("✅ Illness coupling works correctly")
     print("🎯 Phase 3 implementation ready for testing!")

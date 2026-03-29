@@ -442,7 +442,7 @@ class TestWorldManagerIntegration:
         manager = WorldManager(base_path=temp_dir)
 
         # Create world
-        world = manager.create_world(world_id="lifecycle_test", description="Test world lifecycle")
+        manager.create_world(world_id="lifecycle_test", description="Test world lifecycle")
         assert manager.world_exists("lifecycle_test")
 
         # Get engine and session

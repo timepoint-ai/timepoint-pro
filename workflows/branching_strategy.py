@@ -581,7 +581,7 @@ class BranchingStrategy:
             else:
                 # Multiple states — parallelize LLM calls
                 # Snapshot accumulated_world_state before parallel processing
-                pre_step_world_state = copy.deepcopy(self.accumulated_world_state)
+                copy.deepcopy(self.accumulated_world_state)
                 next_states = []
 
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -782,9 +782,9 @@ Return ONLY valid JSON matching this exact structure. All strings must be quoted
                 prompt=user_prompt,
                 response_model=ConsequentList,
                 system_prompt="You are an expert at forward temporal reasoning and counterfactual scenarios.",
-                temperature=0.9
-                if is_branch_point
-                else 0.7,  # Higher temp for diversity at branch points
+                temperature=(
+                    0.9 if is_branch_point else 0.7
+                ),  # Higher temp for diversity at branch points
                 max_tokens=token_estimate.recommended_tokens,
             )
 
@@ -793,10 +793,9 @@ Return ONLY valid JSON matching this exact structure. All strings must be quoted
                 # Create new branch ID for branch points
                 if is_branch_point:
                     branch_id = f"{current_state.branch_id}_{data.outcome_type}_{i}"
-                    branch_name = f"{data.outcome_type.title()} outcome"
+                    f"{data.outcome_type.title()} outcome"
                 else:
                     branch_id = current_state.branch_id
-                    branch_name = current_state.branch_id
 
                 # Ensure we have entities (inherit from parent if needed)
                 state_entities = self._ensure_entities_present(

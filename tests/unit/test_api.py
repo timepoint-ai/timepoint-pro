@@ -613,7 +613,7 @@ class TestForkEndpoint:
         assert fork_resp.status_code == 201
 
         # Bob owns the fork
-        fork_id = fork_resp.json()["tensor_id"]
+        fork_resp.json()["tensor_id"]
         fork_data = fork_resp.json()
         assert fork_data["owner_id"] == "bob"
 

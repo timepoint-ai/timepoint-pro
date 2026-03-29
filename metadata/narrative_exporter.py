@@ -185,9 +185,11 @@ class NarrativeExporter:
             profile = CharacterProfile(
                 entity_id=entity.entity_id if hasattr(entity, "entity_id") else str(entity),
                 entity_type=entity.entity_type if hasattr(entity, "entity_type") else "unknown",
-                age=entity.entity_metadata.get("physical_tensor", {}).get("age")
-                if hasattr(entity, "entity_metadata")
-                else None,
+                age=(
+                    entity.entity_metadata.get("physical_tensor", {}).get("age")
+                    if hasattr(entity, "entity_metadata")
+                    else None
+                ),
                 initial_knowledge=knowledge[:10] if knowledge else [],  # First 10 items
                 knowledge_count=len(knowledge) if knowledge else 0,
                 final_energy=energy,
@@ -201,9 +203,9 @@ class NarrativeExporter:
             entry = TimelineEntry(
                 timepoint_id=tp.timepoint_id if hasattr(tp, "timepoint_id") else str(tp),
                 timestamp=str(tp.timestamp) if hasattr(tp, "timestamp") else None,
-                event_description=tp.event_description
-                if hasattr(tp, "event_description")
-                else "Event",
+                event_description=(
+                    tp.event_description if hasattr(tp, "event_description") else "Event"
+                ),
                 entities_present=tp.entities_present if hasattr(tp, "entities_present") else [],
                 causal_parent=tp.causal_parent if hasattr(tp, "causal_parent") else None,
                 importance=tp.dramatic_importance if hasattr(tp, "dramatic_importance") else 0.5,
@@ -235,9 +237,11 @@ class NarrativeExporter:
 
                         excerpt = DialogExcerpt(
                             dialog_id=dialog.dialog_id,
-                            timepoint_id=dialog.timepoint_id
-                            if hasattr(dialog, "timepoint_id")
-                            else "unknown",
+                            timepoint_id=(
+                                dialog.timepoint_id
+                                if hasattr(dialog, "timepoint_id")
+                                else "unknown"
+                            ),
                             participants=participants,
                             turns=turns,
                         )
@@ -259,9 +263,11 @@ class NarrativeExporter:
 
             # Extract sample prompts (first 3)
             training_insights.sample_prompts = [
-                ex.get("prompt", "")[:200] + "..."
-                if len(ex.get("prompt", "")) > 200
-                else ex.get("prompt", "")
+                (
+                    ex.get("prompt", "")[:200] + "..."
+                    if len(ex.get("prompt", "")) > 200
+                    else ex.get("prompt", "")
+                )
                 for ex in training_data[:3]
             ]
 
@@ -331,9 +337,11 @@ class NarrativeExporter:
             template_id=run_metadata.template_id,
             started_at=run_metadata.started_at,
             completed_at=run_metadata.completed_at,
-            causal_mode=run_metadata.causal_mode.value
-            if hasattr(run_metadata.causal_mode, "value")
-            else str(run_metadata.causal_mode),
+            causal_mode=(
+                run_metadata.causal_mode.value
+                if hasattr(run_metadata.causal_mode, "value")
+                else str(run_metadata.causal_mode)
+            ),
             duration_seconds=run_metadata.duration_seconds,
             cost_usd=run_metadata.cost_usd,
             status=run_metadata.status,
@@ -353,12 +361,14 @@ class NarrativeExporter:
             validation_details=val_details,
             strengths=strengths,
             weaknesses=weaknesses,
-            oxen_uploaded=bool(run_metadata.oxen_dataset_url)
-            if hasattr(run_metadata, "oxen_dataset_url")
-            else False,
-            oxen_repo_url=run_metadata.oxen_repo_url
-            if hasattr(run_metadata, "oxen_repo_url")
-            else None,
+            oxen_uploaded=(
+                bool(run_metadata.oxen_dataset_url)
+                if hasattr(run_metadata, "oxen_dataset_url")
+                else False
+            ),
+            oxen_repo_url=(
+                run_metadata.oxen_repo_url if hasattr(run_metadata, "oxen_repo_url") else None
+            ),
         )
 
     def _generate_template_summary(

@@ -134,8 +134,8 @@ class CausalGraph:
         return cls(
             run_id=data["run_id"],
             template_id=data.get("template_id"),
-            temporal_edges=set(tuple(e) for e in data.get("temporal_edges", [])),
-            knowledge_edges=set(tuple(e) for e in data.get("knowledge_edges", [])),
+            temporal_edges={tuple(e) for e in data.get("temporal_edges", [])},
+            knowledge_edges={tuple(e) for e in data.get("knowledge_edges", [])},
             entities=set(data.get("entities", [])),
             timepoints=set(data.get("timepoints", [])),
             metadata=data.get("metadata", {}),

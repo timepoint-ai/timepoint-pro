@@ -338,10 +338,9 @@ Respond with:
                 "stamina_remaining": physical_state.get("stamina", 1.0),
             },
             "new_knowledge_gained": new_knowledge,
-            "ttm_tensor_updates": {
-                tensor: f"Updated based on experience at {t1_id}"
-                for tensor in character_tensors[:2]  # Show first 2 tensor updates
-            },
+            "ttm_tensor_updates": dict.fromkeys(
+                character_tensors[:2], f"Updated based on experience at {t1_id}"
+            ),
         }
 
         return json.dumps(completion, indent=2)
@@ -399,16 +398,20 @@ Respond with:
             "entity_id": entity_id,
             "timepoint_id": t1_id,
             "timepoint_index": len(previous_timepoints) - 1,
-            "resolution_level": resolution_level.value
-            if hasattr(resolution_level, "value")
-            else str(resolution_level),
-            "temporal_mode": temporal_mode.value
-            if hasattr(temporal_mode, "value")
-            else str(temporal_mode),
+            "resolution_level": (
+                resolution_level.value
+                if hasattr(resolution_level, "value")
+                else str(resolution_level)
+            ),
+            "temporal_mode": (
+                temporal_mode.value if hasattr(temporal_mode, "value") else str(temporal_mode)
+            ),
             # M1: Heterogeneous Fidelity
-            "resolution_level_detail": resolution_level.value
-            if hasattr(resolution_level, "value")
-            else str(resolution_level),
+            "resolution_level_detail": (
+                resolution_level.value
+                if hasattr(resolution_level, "value")
+                else str(resolution_level)
+            ),
             # M2: Progressive Training
             "training_iterations": getattr(entity, "training_iterations", 0),
             "query_count": getattr(entity, "query_count", 0),
@@ -437,28 +440,30 @@ Respond with:
             # M12: Counterfactual Branching
             "branching_enabled": hasattr(config, "temporal")
             and getattr(config.temporal, "enable_counterfactuals", False),
-            "branch_points": config.metadata.get("branching_points", [])
-            if hasattr(config, "metadata")
-            else [],
+            "branch_points": (
+                config.metadata.get("branching_points", []) if hasattr(config, "metadata") else []
+            ),
             # M13: Multi-Entity Synthesis
             "relationship_tracking": hasattr(config, "outputs")
             and getattr(config.outputs, "include_relationships", False),
             # M14: Circadian Patterns
-            "timestamp": getattr(t1, "timestamp", datetime.now()).isoformat()
-            if hasattr(t1, "timestamp")
-            else None,
+            "timestamp": (
+                getattr(t1, "timestamp", datetime.now()).isoformat()
+                if hasattr(t1, "timestamp")
+                else None
+            ),
             "circadian_context": self._extract_circadian_context(t1),
             # M15: Entity Prospection
             "prospective_state": self._extract_prospection(entity, t1),
             # M16: Animistic Entities
-            "animism_level": getattr(config.entities, "animism_level", 0)
-            if hasattr(config, "entities")
-            else 0,
+            "animism_level": (
+                getattr(config.entities, "animism_level", 0) if hasattr(config, "entities") else 0
+            ),
             "entity_type": getattr(entity, "entity_type", "human"),
             # M17: Modal Temporal Causality
-            "temporal_mode_detail": temporal_mode.value
-            if hasattr(temporal_mode, "value")
-            else str(temporal_mode),
+            "temporal_mode_detail": (
+                temporal_mode.value if hasattr(temporal_mode, "value") else str(temporal_mode)
+            ),
             # Summary of mechanisms used
             "mechanisms_used": mechanisms_used,
             # Character-specific metadata

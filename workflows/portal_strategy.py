@@ -533,7 +533,7 @@ class PortalStrategy:
                     }
 
             # Identify contested vs resolved claims
-            all_content = " ".join(t.get("content", "") for t in turns).lower()
+            " ".join(t.get("content", "") for t in turns).lower()
             disagreement_markers = ["disagree", "wrong", "no,", "but that's", "however", "actually"]
             agreement_markers = ["agree", "right", "exactly", "correct", "yes,"]
 
@@ -552,7 +552,7 @@ class PortalStrategy:
             dialog_constraints["escalation_level"] = min(1.0, escalation_count / max(len(turns), 1))
 
             # Summary
-            speakers = list(set(t.get("speaker", "?") for t in turns))
+            speakers = list({t.get("speaker", "?") for t in turns})
             dialog_constraints["dialog_summary"] = (
                 f"Dialog between {', '.join(speakers[:4])} at step {step_index} "
                 f"({len(turns)} turns, escalation: {dialog_constraints['escalation_level']:.1f})"
@@ -814,9 +814,9 @@ Include 3-10 relevant entities."""
                         strategy=strategy,
                         step_num=step,
                         context={
-                            "entities": current_states[0].entities
-                            if current_states
-                            else portal.entities,
+                            "entities": (
+                                current_states[0].entities if current_states else portal.entities
+                            ),
                             "importance_score": 0.5,  # TODO: compute from state
                             "state_complexity": 0.5,  # TODO: compute from state
                             "pivot_detected": False,  # TODO: detect pivot points
@@ -977,9 +977,7 @@ Include 3-10 relevant entities."""
         )
 
         # Extract key entities with role/description context for better anchoring
-        entity_names = (
-            [e.entity_id for e in current_state.entities[:10]] if current_state.entities else []
-        )
+        ([e.entity_id for e in current_state.entities[:10]] if current_state.entities else [])
         entity_summary = (
             f"{len(current_state.entities)} entities"
             if current_state.entities
@@ -1197,7 +1195,7 @@ Return as JSON with an "antecedents" array containing {count} antecedent objects
 
             # Convert to PortalState objects
             antecedents = []
-            for i, data in enumerate(antecedent_data[:count]):  # Limit to requested count
+            for _i, data in enumerate(antecedent_data[:count]):  # Limit to requested count
                 # Create antecedent state with filtered entities (prevent hallucination)
                 # Filter entities to those relevant to this specific antecedent description
                 filtered_entities = _filter_entities_by_relevance(
@@ -1441,9 +1439,9 @@ Return as JSON with an "antecedents" array containing {count} antecedent objects
                 "simulation_narrative": narrative,
                 "emergent_events": emergent_events,
                 "candidate_year": candidate_state.year,
-                "simulation_end_year": simulated_states[-1].year
-                if simulated_states
-                else candidate_state.year,
+                "simulation_end_year": (
+                    simulated_states[-1].year if simulated_states else candidate_state.year
+                ),
             }
 
         # Execute simulation with overall timeout protection
@@ -1656,9 +1654,10 @@ Rate each candidate 0.0-1.0 where:
 
         # Build candidate descriptions
         candidate_descriptions = []
-        for i, (candidate, sim_result) in enumerate(zip(candidate_antecedents, simulation_results)):
+        for i, (candidate, sim_result) in enumerate(
+            zip(candidate_antecedents, simulation_results, strict=False)
+        ):
             # Extract key information
-            candidate_year = candidate.year
             candidate_desc = candidate.description
             narrative = sim_result.get("simulation_narrative", "No narrative")
             coherence = sim_result.get("coherence_metrics", {})
@@ -1940,7 +1939,7 @@ Focus on: forward coherence, dialog realism, causal necessity, internal consiste
         scores = self._judge_simulation_realism(antecedents, simulation_results, consequent)
 
         # Assign scores to antecedents
-        for ant, score in zip(antecedents, scores):
+        for ant, score in zip(antecedents, scores, strict=False):
             ant.plausibility_score = score
 
         # Sort by score descending
@@ -2347,7 +2346,7 @@ Rate contextual plausibility from 0.0 (anachronistic/impossible for the era) to 
                     pivot_points.add(i)
 
         # Convert to sorted list
-        return sorted(list(pivot_points))
+        return sorted(pivot_points)
 
     def _compute_path_divergence(self, paths: list[PortalPath]) -> dict[str, Any]:
         """

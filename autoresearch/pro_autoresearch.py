@@ -32,7 +32,6 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from autoresearch.config_space import ALL_CLUSTERS, ConfigSpace
 from autoresearch.metrics import RunMetrics, synthetic_metrics
@@ -143,7 +142,7 @@ def _parse_run_output(
 def autoresearch_loop(
     template: str,
     iterations: int,
-    cluster: Optional[str],
+    cluster: str | None,
     dry_run: bool,
     seed: int,
 ) -> list[RunMetrics]:
@@ -198,8 +197,12 @@ def main():
     parser.add_argument("--template", default="board_meeting", help="Template to optimize")
     parser.add_argument("--all-templates", action="store_true", help="Run across all templates")
     parser.add_argument("--iterations", type=int, default=20, help="Number of iterations")
-    parser.add_argument("--cluster", choices=list(ALL_CLUSTERS.keys()), help="Mechanism cluster to optimize")
-    parser.add_argument("--dry-run", action="store_true", help="Use synthetic metrics (no API calls)")
+    parser.add_argument(
+        "--cluster", choices=list(ALL_CLUSTERS.keys()), help="Mechanism cluster to optimize"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Use synthetic metrics (no API calls)"
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--output", help="Output file for results JSONL")
     args = parser.parse_args()
@@ -228,9 +231,7 @@ def main():
     cluster_tag = f"_{args.cluster}" if args.cluster else ""
 
     # Save JSONL
-    results_path = args.output or str(
-        RESULTS_DIR / f"{mode}_run{cluster_tag}_{timestamp}.jsonl"
-    )
+    results_path = args.output or str(RESULTS_DIR / f"{mode}_run{cluster_tag}_{timestamp}.jsonl")
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     with open(results_path, "w") as f:
         for r in all_results:

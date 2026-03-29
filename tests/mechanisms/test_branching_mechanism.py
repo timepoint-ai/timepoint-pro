@@ -294,13 +294,13 @@ def test_branch_validation():
     )
 
     result = validate_intervention_plausibility(valid_intervention)
-    assert result["valid"] == True
+    assert result["valid"]
 
     # Test invalid intervention
     invalid_intervention = Intervention(type="invalid_type", target="", description="")
 
     result = validate_intervention_plausibility(invalid_intervention)
-    assert result["valid"] == False
+    assert not result["valid"]
     assert "invalid_type" in result["message"]
 
     # Test branch consistency
@@ -315,7 +315,7 @@ def test_branch_validation():
     )
 
     result = validate_branch_consistency(valid_branch)
-    assert result["valid"] == True
+    assert result["valid"]
 
     # Test invalid branch
     invalid_branch = Timeline(
@@ -327,7 +327,7 @@ def test_branch_validation():
     )
 
     result = validate_branch_consistency(invalid_branch)
-    assert result["valid"] == False
+    assert not result["valid"]
 
     print("✅ Branch validation tests passed!")
 

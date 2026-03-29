@@ -281,7 +281,7 @@ class TestResearchWorkflow:
         assert comm_fork.status_code == 201
 
         # Community owns their fork
-        fork_id = comm_fork.json()["tensor_id"]
+        comm_fork.json()["tensor_id"]
         fork_data = comm_fork.json()
         assert fork_data["owner_id"] == comm_id
 

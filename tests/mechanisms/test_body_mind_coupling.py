@@ -120,15 +120,15 @@ def test_fever_coupling():
     )
 
     # Verify fever effects
-    assert entity.cognitive_tensor.decision_confidence < 0.8, (
-        f"Expected confidence < 0.8, got {entity.cognitive_tensor.decision_confidence}"
-    )
-    assert entity.cognitive_tensor.risk_tolerance > 0.5, (
-        f"Expected risk tolerance > 0.5, got {entity.cognitive_tensor.risk_tolerance}"
-    )
-    assert entity.cognitive_tensor.social_engagement < 0.8, (
-        f"Expected social engagement < 0.8, got {entity.cognitive_tensor.social_engagement}"
-    )
+    assert (
+        entity.cognitive_tensor.decision_confidence < 0.8
+    ), f"Expected confidence < 0.8, got {entity.cognitive_tensor.decision_confidence}"
+    assert (
+        entity.cognitive_tensor.risk_tolerance > 0.5
+    ), f"Expected risk tolerance > 0.5, got {entity.cognitive_tensor.risk_tolerance}"
+    assert (
+        entity.cognitive_tensor.social_engagement < 0.8
+    ), f"Expected social engagement < 0.8, got {entity.cognitive_tensor.social_engagement}"
 
     print("  ✅ Fever coupling test PASSED")
     return True

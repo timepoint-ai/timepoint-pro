@@ -56,7 +56,7 @@ def should_trigger_prospection(
 
     # Explicit entity list
     modeling_entity = prospection_config.get("modeling_entity")
-    target_entity = prospection_config.get("target_entity")
+    prospection_config.get("target_entity")
 
     if modeling_entity and entity.entity_id == modeling_entity:
         return True
@@ -219,7 +219,7 @@ def trigger_prospection_for_entity(
         return None
 
     # Get prospection parameters
-    params = get_prospection_params(entity, timepoint, config)
+    get_prospection_params(entity, timepoint, config)
 
     # Generate prospective state using workflows
     from workflows import generate_prospective_state

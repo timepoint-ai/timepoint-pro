@@ -241,7 +241,7 @@ class TestM9QueryIntegration:
 
         # Query mentioning multiple missing entities
         # Note: Current implementation may only generate one at a time
-        response = qi.query("Did attendee #10 and attendee #11 interact?")
+        qi.query("Did attendee #10 and attendee #11 interact?")
 
         # At least one entity should have been generated
         entity_10 = store.get_entity("attendee_10")
@@ -349,7 +349,7 @@ class TestM9EdgeCases:
         store.save_entity(entity1)
 
         # Try to query it (should not regenerate)
-        response = qi.query("What did unique_attendee know?")
+        qi.query("What did unique_attendee know?")
 
         # Check database has only one
         all_entities = store.get_all_entities()

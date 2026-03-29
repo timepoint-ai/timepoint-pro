@@ -87,9 +87,7 @@ class ExportPipeline:
         )
 
         # Normalize export format (markdown -> md)
-        normalized_format = (
-            "md" if export_format.lower() in ["markdown", "md"] else export_format.lower()
-        )
+        ("md" if export_format.lower() in ["markdown", "md"] else export_format.lower())
 
         # Special handling for script exports (fountain, storyboard, pdf)
         if export_format.lower() in ["fountain", "storyboard", "pdf"]:
@@ -143,9 +141,9 @@ class ExportPipeline:
             "export_format": export_format,
             "compression": compression,
             "output_path": str(output_path),
-            "file_size_bytes": Path(output_path).stat().st_size
-            if Path(output_path).exists()
-            else 0,
+            "file_size_bytes": (
+                Path(output_path).stat().st_size if Path(output_path).exists() else 0
+            ),
             "exported_at": datetime.now(timezone.utc).isoformat(),
         }
 

@@ -140,7 +140,7 @@ class EntityEvolutionFormatter:
 
         # Entity-specific energy cost based on actual cognitive state and activity
         entity_metadata = getattr(entity, "entity_metadata", {})
-        base_energy = entity_metadata.get("energy_budget", 100.0)
+        entity_metadata.get("energy_budget", 100.0)
         cognitive_load = len(new_knowledge) * 5.0  # knowledge acquisition cost
         social_cost = len(t1.entities_present) * 2.0  # social interaction overhead
         energy_cost = 5.0 + cognitive_load + social_cost

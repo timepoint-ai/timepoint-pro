@@ -124,7 +124,9 @@ class TimepointDB:
             params.extend(mechanisms)
 
         # Get total count
-        count_query = f"SELECT COUNT(*) FROM runs WHERE {where_sql}"  # nosec B608 - where_sql uses ? params
+        count_query = (
+            f"SELECT COUNT(*) FROM runs WHERE {where_sql}"  # nosec B608 - where_sql uses ? params
+        )
         cursor.execute(count_query, params)
         total_count = cursor.fetchone()[0]
 
@@ -441,13 +443,17 @@ class TimepointDB:
 
             timepoint_list.append(
                 {
-                    "timepoint_id": f"tp_{i + 1:03d}"
-                    if timepoints_created > 1
-                    else (assignments[0]["timepoint_id"] if assignments else "tp_001"),
+                    "timepoint_id": (
+                        f"tp_{i + 1:03d}"
+                        if timepoints_created > 1
+                        else (assignments[0]["timepoint_id"] if assignments else "tp_001")
+                    ),
                     "timestamp": tp_timestamp.isoformat(),
-                    "event_description": f"Timepoint {i + 1}/{timepoints_created}"
-                    if timepoints_created > 1
-                    else f"Timepoint {assignments[0]['timepoint_id'] if assignments else 'tp_001'}",
+                    "event_description": (
+                        f"Timepoint {i + 1}/{timepoints_created}"
+                        if timepoints_created > 1
+                        else f"Timepoint {assignments[0]['timepoint_id'] if assignments else 'tp_001'}"
+                    ),
                     "entities_present": entity_list,
                     "importance": 0.5,
                     "dialog_turn_count": 0,
