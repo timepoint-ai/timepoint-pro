@@ -808,19 +808,29 @@ Include 3-10 relevant entities."""
                     target_resolution = ResolutionLevel.SCENE
             else:
                 # Query agent for adaptive decision
+                signal_state = current_states[0] if current_states else portal
+                # Compute real signals from state. Fields are OMITTED (not faked)
+                # when no signal is available — the consumer falls back via
+                # dict.get(..., default) rather than receiving a hardcoded 0.5.
+                ctx: dict[str, Any] = {
+                    "entities": signal_state.entities,
+                }
+                importance = self._compute_state_importance(signal_state)
+                if importance is not None:
+                    ctx["importance_score"] = importance
+                complexity = self._compute_state_complexity(signal_state)
+                if complexity is not None:
+                    ctx["state_complexity"] = complexity
+                # pivot_detected is always determinable (boolean over signals);
+                # absence of signals means False, which is the correct answer.
+                ctx["pivot_detected"] = self._detect_pivot_in_state(signal_state)
+
                 month_step, target_resolution = (
                     temporal_agent.determine_next_step_fidelity_and_time(
-                        current_state=current_states[0] if current_states else portal,
+                        current_state=signal_state,
                         strategy=strategy,
                         step_num=step,
-                        context={
-                            "entities": (
-                                current_states[0].entities if current_states else portal.entities
-                            ),
-                            "importance_score": 0.5,  # TODO: compute from state
-                            "state_complexity": 0.5,  # TODO: compute from state
-                            "pivot_detected": False,  # TODO: detect pivot points
-                        },
+                        context=ctx,
                     )
                 )
 
@@ -935,6 +945,146 @@ Include 3-10 relevant entities."""
         # For now, fall back to reverse chronological
         print("  (Random sampling not yet implemented, using reverse chronological)")
         return self._explore_reverse_chronological(portal)
+
+    # --- State signal computation ---------------------------------------
+    # These helpers replace previously hardcoded 0.5 / False sentinels that
+    # were silently emitted to the temporal agent's adaptive-fidelity logic.
+
+    # Keywords reused from _detect_pivot_points (Strategy 2). Kept as a
+    # class-level constant so both call sites stay in sync.
+    _PIVOT_KEYWORDS: frozenset[str] = frozenset(
+        {
+            "decided",
+            "decision",
+            "chose",
+            "choose",
+            "choice",
+            "pivotal",
+            "pivot",
+            "turning point",
+            "inflection",
+            "crossroads",
+            "fork",
+            "launched",
+            "founded",
+            "acquired",
+            "merged",
+            "raised",
+            "funding",
+            "series a",
+            "series b",
+            "ipo",
+            "went public",
+            "exit",
+            "breakthrough",
+            "transformed",
+            "revolutionized",
+            "disrupted",
+            "scaled",
+            "expanded",
+            "pivoted",
+            "repositioned",
+            "crisis",
+            "failed",
+            "survived",
+            "recovered",
+            "overcame",
+        }
+    )
+    _PIVOT_EVENT_KEYWORDS: frozenset[str] = frozenset(
+        {"launch", "fund", "acquire", "hire", "scale", "pivot", "decision"}
+    )
+
+    def _compute_state_importance(self, state: PortalState) -> float | None:
+        """
+        Compute a real importance score in [0, 1] from observable state signals,
+        or return None if no signal is available (caller will omit the field).
+
+        Signals (each contributes if present):
+          - plausibility_score (LLM/judge-derived) — primary signal
+          - presence of pivot keywords in description
+          - presence of key_events in world_state
+          - count of entities with established roles/traits
+        """
+        signals: list[float] = []
+
+        # plausibility_score is only meaningful if it's been set (>0).
+        if state.plausibility_score and state.plausibility_score > 0.0:
+            signals.append(max(0.0, min(1.0, state.plausibility_score)))
+
+        desc_lower = (state.description or "").lower()
+        if desc_lower:
+            keyword_hits = sum(1 for kw in self._PIVOT_KEYWORDS if kw in desc_lower)
+            if keyword_hits > 0:
+                # Saturating: 1 hit -> 0.6, 3+ hits -> ~0.9
+                signals.append(min(1.0, 0.5 + 0.15 * keyword_hits))
+
+        key_events = state.world_state.get("key_events", []) if state.world_state else []
+        if key_events:
+            # More events -> higher importance, capped at 1.0
+            signals.append(min(1.0, 0.4 + 0.15 * len(key_events)))
+
+        # Entities with metadata roles indicate a structurally rich state
+        role_entities = 0
+        for ent in state.entities or []:
+            meta = getattr(ent, "entity_metadata", None) or {}
+            if meta.get("role") or meta.get("personality_traits"):
+                role_entities += 1
+        if role_entities > 0:
+            signals.append(min(1.0, 0.3 + 0.1 * role_entities))
+
+        if not signals:
+            # No usable signal — strip the field rather than fake 0.5.
+            return None
+
+        return sum(signals) / len(signals)
+
+    def _compute_state_complexity(self, state: PortalState) -> float | None:
+        """
+        Compute a real complexity score in [0, 1] from observable state size,
+        or return None if state is entirely empty.
+
+        Signals:
+          - entity count (saturating around 8 entities)
+          - world_state key count (saturating around 6 keys)
+          - description length (saturating around 400 chars)
+        """
+        entity_count = len(state.entities or [])
+        ws_keys = len(state.world_state or {})
+        desc_len = len(state.description or "")
+
+        if entity_count == 0 and ws_keys == 0 and desc_len == 0:
+            return None
+
+        entity_signal = min(1.0, entity_count / 8.0)
+        ws_signal = min(1.0, ws_keys / 6.0)
+        desc_signal = min(1.0, desc_len / 400.0)
+
+        # Weighted: entities & world_state matter more than raw description length
+        return 0.45 * entity_signal + 0.35 * ws_signal + 0.20 * desc_signal
+
+    def _detect_pivot_in_state(self, state: PortalState) -> bool:
+        """
+        Detect whether a single state appears to be a pivot point. Always
+        determinable (returns True/False) — keyword/event-based, deterministic.
+        """
+        desc_lower = (state.description or "").lower()
+        if desc_lower:
+            for kw in self._PIVOT_KEYWORDS:
+                if kw in desc_lower:
+                    return True
+
+        if state.world_state:
+            key_events = state.world_state.get("key_events", []) or []
+            for event in key_events:
+                event_lower = str(event).lower() if event else ""
+                if any(kw in event_lower for kw in self._PIVOT_EVENT_KEYWORDS):
+                    return True
+            entity_changes = state.world_state.get("entity_changes", {}) or {}
+            if entity_changes and len(entity_changes) > 2:
+                return True
+
+        return False
 
     def _generate_antecedents(
         self,
